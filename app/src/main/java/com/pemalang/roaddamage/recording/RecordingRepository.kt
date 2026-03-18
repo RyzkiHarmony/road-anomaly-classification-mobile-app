@@ -66,7 +66,7 @@ constructor(private val app: Application, private val tripDao: TripDao) {
     val cameraTrigger: MutableSharedFlow<Float> = _cameraTrigger
 
     // IO Optimization: Buffer for writing to file
-    private val readingBuffer = ArrayList<String>(60)
+    private val readingBuffer = ArrayList<SensorReading>(60)
     private val BATCH_SIZE = 50
     private val bufferMutex = Mutex()
 
@@ -108,27 +108,23 @@ constructor(private val app: Application, private val tripDao: TripDao) {
     }
 
     suspend fun appendReading(reading: SensorReading) {
-        val line =
-                "${reading.timestamp},${reading.accelX},${reading.accelY},${reading.accelZ},${reading.magnitude}," +
-                        "${if (reading.latitude.isNaN()) "" else reading.latitude}," +
-                        "${if (reading.longitude.isNaN()) "" else reading.longitude}," +
-                        "${if (reading.altitude.isNaN()) "" else reading.altitude}," +
-                        "${if (reading.speed.isNaN()) "" else reading.speed}," +
-                        "${if (reading.accuracy.isNaN()) "" else reading.accuracy}," +
-                        "${if (reading.bearing.isNaN()) "" else reading.bearing}\n"
-
-        bufferMutex.withLock { readingBuffer.add(line) }
+        bufferMutex.withLock { readingBuffer.add(reading) }
 
         if (readingBuffer.size >= BATCH_SIZE) {
             flushBufferSuspend()
         }
 
         _readings.tryEmit(reading)
-        val lat = reading.latitude
-        val lon = reading.longitude
-        if (!lat.isNaN() && !lon.isNaN()) {
+        
+        // Filter GPS based on accuracy (Threshold: 20 meters)
+        if (!reading.latitude.isNaN() && !reading.longitude.isNaN() && 
+            !reading.accuracy.isNaN() && reading.accuracy <= 20.0f) {
+            
+            val lat = reading.latitude
+            val lon = reading.longitude
             val prevLat = lastLat
             val prevLon = lastLon
+            
             if (prevLat != null && prevLon != null) {
                 totalDistance += Distance.haversine(prevLat, prevLon, lat, lon)
             }
@@ -137,7 +133,7 @@ constructor(private val app: Application, private val tripDao: TripDao) {
             _points.tryEmit(lat to lon)
             _distance.value = totalDistance
             _gpsLastTs.value = System.currentTimeMillis()
-            _gpsAccuracy.value = if (reading.accuracy.isNaN()) null else reading.accuracy
+            _gpsAccuracy.value = reading.accuracy
         }
     }
 
@@ -188,8 +184,21 @@ constructor(private val app: Application, private val tripDao: TripDao) {
         if (chunk.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 writer?.apply {
-                    for (line in chunk) {
-                        write(line)
+                    val sb = StringBuilder()
+                    for (reading in chunk) {
+                        sb.setLength(0)
+                        sb.append(reading.timestamp).append(",")
+                          .append(reading.accelX).append(",")
+                          .append(reading.accelY).append(",")
+                          .append(reading.accelZ).append(",")
+                          .append(reading.magnitude).append(",")
+                          .append(if (reading.latitude.isNaN()) "" else reading.latitude).append(",")
+                          .append(if (reading.longitude.isNaN()) "" else reading.longitude).append(",")
+                          .append(if (reading.altitude.isNaN()) "" else reading.altitude).append(",")
+                          .append(if (reading.speed.isNaN()) "" else reading.speed).append(",")
+                          .append(if (reading.accuracy.isNaN()) "" else reading.accuracy).append(",")
+                          .append(if (reading.bearing.isNaN()) "" else reading.bearing).append("\n")
+                        write(sb.toString())
                     }
                 }
             }

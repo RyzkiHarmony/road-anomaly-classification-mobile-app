@@ -58,6 +58,26 @@ class RecordingService : Service() {
         super.onCreate()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // Release WakeLock safely when service is destroyed
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        wakeLock = null
+
+        // Stop sensors and jobs to prevent background leakage
+        accel?.stop()
+        gps?.stop()
+        collectingJob?.cancel()
+        scope?.cancel()
+        scope = null
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         if (action == ACTION_START) {
@@ -156,21 +176,6 @@ class RecordingService : Service() {
     }
 
     private fun stopRecording() {
-        try {
-            if (wakeLock?.isHeld == true) {
-                wakeLock?.release()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        wakeLock = null
-
-        accel?.stop()
-        gps?.stop()
-        collectingJob?.cancel()
-        scope?.cancel()
-        scope = null
-
         launchFinish()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

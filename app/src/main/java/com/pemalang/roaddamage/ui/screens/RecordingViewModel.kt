@@ -24,15 +24,15 @@ constructor(
         private val tripDao: TripDao,
         private val prefs: UserPrefs
 ) : ViewModel() {
-    private val _magnitudes = MutableStateFlow<List<Float>>(emptyList())
-    private val _ax = MutableStateFlow<List<Float>>(emptyList())
-    private val _ay = MutableStateFlow<List<Float>>(emptyList())
-    private val _az = MutableStateFlow<List<Float>>(emptyList())
+    private val _magnitudes = MutableStateFlow(FloatArray(0))
+    private val _ax = MutableStateFlow(FloatArray(0))
+    private val _ay = MutableStateFlow(FloatArray(0))
+    private val _az = MutableStateFlow(FloatArray(0))
     private val _points = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
-    val magnitudes: StateFlow<List<Float>> = _magnitudes
-    val ax: StateFlow<List<Float>> = _ax
-    val ay: StateFlow<List<Float>> = _ay
-    val az: StateFlow<List<Float>> = _az
+    val magnitudes: StateFlow<FloatArray> = _magnitudes
+    val ax: StateFlow<FloatArray> = _ax
+    val ay: StateFlow<FloatArray> = _ay
+    val az: StateFlow<FloatArray> = _az
     val points: StateFlow<List<Pair<Double, Double>>> = _points
     val distance: StateFlow<Float> = repo.distanceFlow
     val recording: StateFlow<Boolean> = repo.recordingFlow
@@ -55,37 +55,60 @@ constructor(
         viewModelScope.launch { repo.saveCameraEvent(path, magnitude) }
     }
 
+    // Helper for fast FloatArray concatenation and truncation
+    private fun appendWithLimit(current: FloatArray, newItems: FloatArray, limit: Int = 200): FloatArray {
+        val totalSize = current.size + newItems.size
+        if (totalSize <= limit) {
+            val result = FloatArray(totalSize)
+            System.arraycopy(current, 0, result, 0, current.size)
+            System.arraycopy(newItems, 0, result, current.size, newItems.size)
+            return result
+        } else {
+            val result = FloatArray(limit)
+            val dropCount = totalSize - limit
+            if (dropCount >= current.size) {
+                // We drop all of current, just take the last 'limit' items of newItems
+                System.arraycopy(newItems, newItems.size - limit, result, 0, limit)
+            } else {
+                // Keep some of current, and all of newItems (since newItems.size < limit)
+                val keepFromCurrent = current.size - dropCount
+                System.arraycopy(current, dropCount, result, 0, keepFromCurrent)
+                System.arraycopy(newItems, 0, result, keepFromCurrent, newItems.size)
+            }
+            return result
+        }
+    }
+
     init {
         viewModelScope.launch {
             // UI Optimization: Batch updates to reduce recomposition frequency.
-            // Instead of updating on every sensor event (50-100Hz), we update at ~10Hz.
+            // Using FloatArray minimizes memory churning (boxing) and fast native arraycopy
             val buffer = mutableListOf<com.pemalang.roaddamage.model.SensorReading>()
             var lastUpdate = System.currentTimeMillis()
 
             repo.readingsFlow.collect { r ->
                 buffer.add(r)
                 val now = System.currentTimeMillis()
-                if (now - lastUpdate >= 22) { // 22ms throttle (approx 45 FPS)
+                if (now - lastUpdate >= 33) { // 33ms throttle (approx 30 FPS)
                     if (buffer.isNotEmpty()) {
-                        // Update Magnitudes
-                        val newMags = buffer.map { it.magnitude }
-                        val currentMags = _magnitudes.value
-                        _magnitudes.value = (currentMags + newMags).takeLast(200)
+                        val size = buffer.size
+                        val newMags = FloatArray(size)
+                        val newAx = FloatArray(size)
+                        val newAy = FloatArray(size)
+                        val newAz = FloatArray(size)
+                        
+                        for (i in 0 until size) {
+                            val reading = buffer[i]
+                            newMags[i] = reading.magnitude
+                            newAx[i] = reading.accelX
+                            newAy[i] = reading.accelY
+                            newAz[i] = reading.accelZ
+                        }
 
-                        // Update Ax
-                        val newAx = buffer.map { it.accelX }
-                        val currentAx = _ax.value
-                        _ax.value = (currentAx + newAx).takeLast(200)
-
-                        // Update Ay
-                        val newAy = buffer.map { it.accelY }
-                        val currentAy = _ay.value
-                        _ay.value = (currentAy + newAy).takeLast(200)
-
-                        // Update Az
-                        val newAz = buffer.map { it.accelZ }
-                        val currentAz = _az.value
-                        _az.value = (currentAz + newAz).takeLast(200)
+                        _magnitudes.value = appendWithLimit(_magnitudes.value, newMags, 200)
+                        _ax.value = appendWithLimit(_ax.value, newAx, 200)
+                        _ay.value = appendWithLimit(_ay.value, newAy, 200)
+                        _az.value = appendWithLimit(_az.value, newAz, 200)
 
                         buffer.clear()
                     }

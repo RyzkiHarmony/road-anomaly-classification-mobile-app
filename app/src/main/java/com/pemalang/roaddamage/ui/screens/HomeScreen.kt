@@ -822,9 +822,9 @@ fun DashboardScreen(
 fun ActiveSessionScreen(
         timerText: String,
         distanceMeters: Float,
-        ax: List<Float>,
-        ay: List<Float>,
-        az: List<Float>,
+        ax: FloatArray,
+        ay: FloatArray,
+        az: FloatArray,
         gpsActive: Boolean,
         onStop: () -> Unit,
         cameraPreview: @Composable () -> Unit
@@ -1170,10 +1170,9 @@ fun LegendItem(color: Color, label: String) {
 }
 
 @Composable
-fun Chart3Lines(ax: List<Float>, ay: List<Float>, az: List<Float>, modifier: Modifier) {
-        val all = ax + ay + az
-        val minV = (all.minOrNull() ?: -12f)
-        val maxV = (all.maxOrNull() ?: 12f)
+fun Chart3Lines(ax: FloatArray, ay: FloatArray, az: FloatArray, modifier: Modifier) {
+        val minV = minOf(ax.minOrNull() ?: -12f, ay.minOrNull() ?: -12f, az.minOrNull() ?: -12f)
+        val maxV = maxOf(ax.maxOrNull() ?: 12f, ay.maxOrNull() ?: 12f, az.maxOrNull() ?: 12f)
         val range = (maxV - minV).let { if (it < 1e-3f) 1f else it }
 
         Canvas(modifier = modifier) {
@@ -1181,7 +1180,7 @@ fun Chart3Lines(ax: List<Float>, ay: List<Float>, az: List<Float>, modifier: Mod
                 val midY = size.height / 2
                 drawLine(Color(0xFF2C3240), Offset(0f, midY), Offset(size.width, midY))
 
-                fun drawSeries(values: List<Float>, color: Color) {
+                fun drawSeries(values: FloatArray, color: Color) {
                         if (values.isEmpty()) return
                         val n = values.size
                         val stepX = if (n > 1) size.width / (n - 1) else size.width
