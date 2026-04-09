@@ -12,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -46,15 +48,17 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 
-private val DarkBg = Color(0xFF1A1D26)
-private val CardBg = Color(0xFF242834)
-private val AccentGreen = Color(0xFF00E676)
-private val TextPrimary = Color(0xFFFFFFFF)
-private val TextSecondary = Color(0xFF8F9BB3)
-private val StatusGreen = Color(0xFF00E676)
-private val StatusOrange = Color(0xFFFFAB40)
-private val GraphLine = Color(0xFF00E676)
-private val SpikeRed = Color(0xFFEF5350)
+import com.pemalang.roaddamage.ui.theme.*
+
+private val DarkBg = md_theme_DarkBg
+private val CardBg = md_theme_CardBg
+private val AccentGreen = md_theme_AccentGreen
+private val TextPrimary = md_theme_TextPrimary
+private val TextSecondary = md_theme_TextSecondary
+private val StatusGreen = md_theme_StatusGreen
+private val StatusOrange = md_theme_StatusOrange
+private val GraphLine = md_theme_AccentGreen
+private val SpikeRed = md_theme_StatusRed
 
 @Composable
 fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
@@ -202,12 +206,12 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                     }
                 }
 
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     // G-Force Monitor
                     Card(
                             colors = CardDefaults.cardColors(containerColor = CardBg),
                             shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().weight(1f)
+                            modifier = Modifier.fillMaxWidth().height(180.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -244,7 +248,11 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
 
                     if (ui.cameraEvents.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        // Gallery removed as requested - images are now shown via map markers
+                        // Collapsible Photo Gallery
+                        PhotoGallerySection(
+                                cameraEvents = ui.cameraEvents,
+                                onEventClick = { event -> selectedEvent = event }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -346,6 +354,157 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = AccentGreen)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PhotoGallerySection(
+        cameraEvents: List<CameraEvent>,
+        onEventClick: (CameraEvent) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+            colors = CardDefaults.cardColors(containerColor = CardBg),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header with toggle
+            Row(
+                    modifier = Modifier.fillMaxWidth()
+                            .clickable { expanded = !expanded },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                            Icons.Default.PhotoLibrary,
+                            null,
+                            tint = AccentGreen,
+                            modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                            "Foto Kerusakan",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                            "(${cameraEvents.size} foto)",
+                            color = TextSecondary,
+                            fontSize = 12.sp
+                    )
+                }
+                Icon(
+                        if (expanded) Icons.Default.ExpandLess
+                        else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Minimize" else "Expand",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Collapsible grid content
+            if (expanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Use a Column with manual grid layout to avoid nested scroll issues
+                val columns = 3
+                val rows = (cameraEvents.size + columns - 1) / columns
+
+                for (row in 0 until rows) {
+                    Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        for (col in 0 until columns) {
+                            val index = row * columns + col
+                            if (index < cameraEvents.size) {
+                                val event = cameraEvents[index]
+                                PhotoThumbnailItem(
+                                        event = event,
+                                        onClick = { onEventClick(event) },
+                                        modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                // Empty spacer to maintain grid alignment
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    if (row < rows - 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoThumbnailItem(
+        event: CameraEvent,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+    Card(
+            colors = CardDefaults.cardColors(containerColor = Color.Black),
+            shape = RoundedCornerShape(8.dp),
+            modifier = modifier
+                    .aspectRatio(1f)
+                    .clickable(onClick = onClick)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                    path = event.imagePath,
+                    contentDescription = "Foto kerusakan",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    reqWidth = 200,
+                    reqHeight = 200
+            )
+            // G-force badge
+            Box(
+                    modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(4.dp)
+                            .background(
+                                    SpikeRed.copy(alpha = 0.85f),
+                                    RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(
+                        text = "%.1fG".format(event.triggerMagnitude),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                )
+            }
+            // No-GPS indicator
+            if (event.latitude == null || event.longitude == null) {
+                Box(
+                        modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .background(
+                                        StatusOrange.copy(alpha = 0.85f),
+                                        RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Icon(
+                            Icons.Default.LocationOff,
+                            contentDescription = "No GPS",
+                            tint = Color.White,
+                            modifier = Modifier.size(10.dp)
+                    )
                 }
             }
         }

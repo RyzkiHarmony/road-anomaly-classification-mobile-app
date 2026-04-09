@@ -174,7 +174,19 @@ constructor(
     }
 
     fun deleteTrip(trip: Trip) {
-        viewModelScope.launch { tripDao.delete(trip) }
+        viewModelScope.launch {
+            // 1. Delete photo files physically
+            val camEvents = tripDao.getCameraEvents(trip.tripId)
+            for (event in camEvents) {
+                try { java.io.File(event.imagePath).delete() } catch (_: Throwable) {}
+            }
+            // 2. Delete camera events from database
+            tripDao.deleteCameraEventsByTripId(trip.tripId)
+            // 3. Delete CSV data file
+            try { java.io.File(trip.dataFilePath).delete() } catch (_: Throwable) {}
+            // 4. Delete trip record
+            tripDao.delete(trip)
+        }
     }
 
     fun enqueueUpload(trip: Trip) {

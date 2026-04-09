@@ -27,6 +27,7 @@ class RecordingRepository
 @Inject
 constructor(private val app: Application, private val tripDao: TripDao) {
     private var currentTrip: Trip? = null
+    private var lastTripId: String? = null
     private var writer: BufferedWriter? = null
     private var lastLat: Double? = null
     private var lastLon: Double? = null
@@ -49,6 +50,7 @@ constructor(private val app: Application, private val tripDao: TripDao) {
     private val _eventCount = MutableStateFlow(0)
     private val _gpsLastTs = MutableStateFlow(0L)
     private val _gpsAccuracy = MutableStateFlow<Float?>(null)
+    private val _currentSpeed = MutableStateFlow(0f)
     private val _cameraTrigger =
             MutableSharedFlow<Float>(
                     replay = 0,
@@ -63,6 +65,7 @@ constructor(private val app: Application, private val tripDao: TripDao) {
     val eventCountFlow: StateFlow<Int> = _eventCount
     val gpsLastTs: StateFlow<Long> = _gpsLastTs
     val gpsAccuracyFlow: StateFlow<Float?> = _gpsAccuracy
+    val currentSpeedFlow: StateFlow<Float> = _currentSpeed
     val cameraTrigger: MutableSharedFlow<Float> = _cameraTrigger
 
     // IO Optimization: Buffer for writing to file
@@ -92,6 +95,7 @@ constructor(private val app: Application, private val tripDao: TripDao) {
             writer?.flush()
         }
         currentTrip = trip
+        lastTripId = trip.tripId
         lastLat = null
         lastLon = null
         totalDistance = 0f
@@ -116,6 +120,11 @@ constructor(private val app: Application, private val tripDao: TripDao) {
 
         _readings.tryEmit(reading)
         
+        // Update real-time speed from GPS (m/s)
+        if (!reading.speed.isNaN()) {
+            _currentSpeed.value = reading.speed
+        }
+
         // Filter GPS based on accuracy (Threshold: 20 meters)
         if (!reading.latitude.isNaN() && !reading.longitude.isNaN() && 
             !reading.accuracy.isNaN() && reading.accuracy <= 20.0f) {
@@ -159,12 +168,13 @@ constructor(private val app: Application, private val tripDao: TripDao) {
     }
 
     suspend fun saveCameraEvent(path: String, magnitude: Float) {
-        val trip = currentTrip ?: return
+        // Fallback to lastTripId if currentTrip just ended
+        val targetTripId = currentTrip?.tripId ?: lastTripId ?: return
         val eventId = UUID.randomUUID().toString()
         val event =
                 CameraEvent(
                         eventId = eventId,
-                        tripId = trip.tripId,
+                        tripId = targetTripId,
                         timestamp = System.currentTimeMillis(),
                         latitude = lastLat,
                         longitude = lastLon,

@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -50,6 +51,10 @@ constructor(
             prefs.samplingRateFlow.stateIn(viewModelScope, SharingStarted.Lazily, 50)
     val sensitivityThreshold: StateFlow<Float> =
             prefs.sensitivityFlow.stateIn(viewModelScope, SharingStarted.Lazily, 2.0f)
+    val currentSpeedKmh: StateFlow<Float> =
+            repo.currentSpeedFlow
+                    .map { (it * 3.6f).coerceAtLeast(0f) }
+                    .stateIn(viewModelScope, SharingStarted.Lazily, 0f)
 
     fun saveCameraEvent(path: String, magnitude: Float) {
         viewModelScope.launch { repo.saveCameraEvent(path, magnitude) }

@@ -64,7 +64,13 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         }
         val pts = mutableListOf<Pair<Double, Double>>()
         val mags = mutableListOf<Float>()
-        val camEvents = tripDao.getCameraEvents(tripId)
+        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, cameraEvents = emptyList())
+        
+        viewModelScope.launch {
+            tripDao.observeCameraEvents(tripId).collect { newEvents ->
+                _ui.value = _ui.value.copy(cameraEvents = newEvents)
+            }
+        }
         try {
             val file = File(trip.dataFilePath)
             if (file.exists()) {
@@ -99,7 +105,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         } catch (t: Throwable) {
             events.tryEmit(Event.Error("Gagal membaca file: ${t.message ?: ""}"))
         }
-        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, cameraEvents = camEvents)
+        _ui.value = _ui.value.copy(points = pts, magnitudes = mags)
     }
 
     fun enqueueUpload() {
@@ -131,10 +137,17 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         val trip = _ui.value.trip ?: return
         viewModelScope.launch {
             try {
+                // 1. Delete photo files physically
+                val camEvents = tripDao.getCameraEvents(trip.tripId)
+                for (event in camEvents) {
+                    try { File(event.imagePath).delete() } catch (_: Throwable) {}
+                }
+                // 2. Delete camera events from database
+                tripDao.deleteCameraEventsByTripId(trip.tripId)
+                // 3. Delete CSV data file
+                try { File(trip.dataFilePath).delete() } catch (_: Throwable) {}
+                // 4. Delete trip record
                 tripDao.deleteById(trip.tripId)
-                try {
-                    File(trip.dataFilePath).delete()
-                } catch (_: Throwable) {}
                 events.tryEmit(Event.Deleted)
             } catch (t: Throwable) {
                 events.tryEmit(Event.Error("Gagal menghapus: ${t.message ?: ""}"))
@@ -178,8 +191,9 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                     val dateStr = dateFormat.format(java.util.Date(trip.startTime))
                     val csvName = "RoadDamage_$dateStr.csv"
                     val jsonName = "RoadDamage_$dateStr.json"
+                    val folderName = "Trip_$dateStr"
 
-                    val csvUri = insertDownloads(csvName, "text/csv")
+                    val csvUri = insertDownloads(csvName, "text/csv", folderName)
                     if (csvUri != null) {
                         app.contentResolver.openOutputStream(csvUri)?.use { out ->
                             csvSrc.inputStream().use { inp -> inp.copyTo(out) }
@@ -188,14 +202,30 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
 
                     val metaJson =
                             """{"tripId":"${trip.tripId}","userId":"${trip.userId}","startTime":${trip.startTime},"startTimeReadable":"$dateStr","endTime":${trip.endTime},"duration":${trip.duration},"distance":${trip.distance}}"""
-                    val jsonUri = insertDownloads(jsonName, "application/json")
+                    val jsonUri = insertDownloads(jsonName, "application/json", folderName)
                     if (jsonUri != null) {
                         app.contentResolver.openOutputStream(jsonUri)?.use { out ->
                             out.write(metaJson.toByteArray())
                         }
                     }
 
-                    events.tryEmit(Event.Saved("Tersimpan di Download/RoadDamageDetector"))
+                    // Export Photos
+                    val cameraEvents = _ui.value.cameraEvents
+                    var savedPhotos = 0
+                    for (event in cameraEvents) {
+                        val photoFile = File(event.imagePath)
+                        if (photoFile.exists()) {
+                            val imgUri = insertDownloads(photoFile.name, "image/jpeg", folderName)
+                            if (imgUri != null) {
+                                app.contentResolver.openOutputStream(imgUri)?.use { out ->
+                                    photoFile.inputStream().use { inp -> inp.copyTo(out) }
+                                }
+                                savedPhotos++
+                            }
+                        }
+                    }
+
+                    events.tryEmit(Event.Saved("Tersimpan di Download/RoadDamageDetector/$folderName ($savedPhotos foto)"))
                 } catch (t: Throwable) {
                     events.tryEmit(Event.Error("Gagal menyimpan ke Downloads: ${t.message ?: ""}"))
                 }
@@ -225,13 +255,14 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         }
     }
 
-    private fun insertDownloads(name: String, mime: String): Uri? {
+    private fun insertDownloads(name: String, mime: String, subfolder: String = ""): Uri? {
         val values =
                 ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, name)
                     put(MediaStore.MediaColumns.MIME_TYPE, mime)
                     if (Build.VERSION.SDK_INT >= 29) {
-                        put(MediaStore.Downloads.RELATIVE_PATH, "Download/RoadDamageDetector")
+                        val path = if (subfolder.isEmpty()) "Download/RoadDamageDetector" else "Download/RoadDamageDetector/$subfolder"
+                        put(MediaStore.Downloads.RELATIVE_PATH, path)
                     }
                 }
         return if (Build.VERSION.SDK_INT >= 29) {

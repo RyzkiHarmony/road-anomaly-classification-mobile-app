@@ -29,15 +29,26 @@ import com.pemalang.roaddamage.model.UploadStatus
 import com.pemalang.roaddamage.ui.screens.TripListViewModel.SaveEvent
 import java.text.SimpleDateFormat
 import java.util.*
+import com.pemalang.roaddamage.ui.components.BottomNavBar
+import com.pemalang.roaddamage.ui.components.NavDestination
 
-private val DarkBg = Color(0xFF1A1D26)
-private val CardBg = Color(0xFF242834)
-private val AccentGreen = Color(0xFF00E676)
-private val TextPrimary = Color(0xFFFFFFFF)
-private val TextSecondary = Color(0xFF8F9BB3)
-private val StatusGreen = Color(0xFF00E676)
-private val StatusOrange = Color(0xFFFFAB40)
-private val DeleteRed = Color(0xFFEF5350)
+import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
+import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
+import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
+import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
+import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_StatusGreen
+import com.pemalang.roaddamage.ui.theme.md_theme_StatusOrange
+import com.pemalang.roaddamage.ui.theme.md_theme_StatusRed
+
+private val DarkBg = md_theme_DarkBg
+private val CardBg = md_theme_CardBg
+private val AccentGreen = md_theme_AccentGreen
+private val TextPrimary = md_theme_TextPrimary
+private val TextSecondary = md_theme_TextSecondary
+private val StatusGreen = md_theme_StatusGreen
+private val StatusOrange = md_theme_StatusOrange
+private val DeleteRed = md_theme_StatusRed
 
 enum class SortOption {
     NEWEST,
@@ -132,50 +143,16 @@ fun TripListScreen(
             containerColor = DarkBg,
             snackbarHost = { SnackbarHost(hostState = host) },
             bottomBar = {
-                NavigationBar(containerColor = DarkBg, contentColor = AccentGreen) {
-                    NavigationBarItem(
-                            selected = false,
-                            onClick = onNavigateHome,
-                            icon = { Icon(Icons.Default.Home, "Home") },
-                            label = { Text("Home") },
-                            colors =
-                                    NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AccentGreen,
-                                            selectedTextColor = AccentGreen,
-                                            unselectedIconColor = TextSecondary,
-                                            unselectedTextColor = TextSecondary,
-                                            indicatorColor = CardBg
-                                    )
-                    )
-                    NavigationBarItem(
-                            selected = true,
-                            onClick = {},
-                            icon = { Icon(Icons.Default.History, "History") },
-                            label = { Text("History") },
-                            colors =
-                                    NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AccentGreen,
-                                            selectedTextColor = AccentGreen,
-                                            unselectedIconColor = TextSecondary,
-                                            unselectedTextColor = TextSecondary,
-                                            indicatorColor = CardBg
-                                    )
-                    )
-                    NavigationBarItem(
-                            selected = false,
-                            onClick = onNavigateSettings,
-                            icon = { Icon(Icons.Default.Settings, "Settings") },
-                            label = { Text("Settings") },
-                            colors =
-                                    NavigationBarItemDefaults.colors(
-                                            selectedIconColor = AccentGreen,
-                                            selectedTextColor = AccentGreen,
-                                            unselectedIconColor = TextSecondary,
-                                            unselectedTextColor = TextSecondary,
-                                            indicatorColor = CardBg
-                                    )
-                    )
-                }
+                BottomNavBar(
+                    selected = NavDestination.History,
+                    onNavigate = { dest ->
+                        when(dest) {
+                            NavDestination.Home -> onNavigateHome()
+                            NavDestination.Settings -> onNavigateSettings()
+                            else -> { /* already on History */ }
+                        }
+                    }
+                )
             }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {

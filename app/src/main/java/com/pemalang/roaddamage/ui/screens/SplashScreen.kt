@@ -25,10 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
+import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
+import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
 
-private val DarkBg = Color(0xFF1A1D26)
-private val AccentGreen = Color(0xFF00E676)
-private val TextPrimary = Color(0xFFFFFFFF)
+private val DarkBg = md_theme_DarkBg
+private val AccentGreen = md_theme_AccentGreen
+private val TextPrimary = md_theme_TextPrimary
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {

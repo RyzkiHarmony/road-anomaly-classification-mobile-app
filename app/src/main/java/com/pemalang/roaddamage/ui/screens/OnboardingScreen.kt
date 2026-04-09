@@ -26,10 +26,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val DarkBg = Color(0xFF1A1D26)
-private val AccentGreen = Color(0xFF00E676)
-private val TextPrimary = Color(0xFFFFFFFF)
-private val TextSecondary = Color(0xFF8F9BB3)
+import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
+import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
+import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
+import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+
+private val DarkBg = md_theme_DarkBg
+private val AccentGreen = md_theme_AccentGreen
+private val TextPrimary = md_theme_TextPrimary
+private val TextSecondary = md_theme_TextSecondary
 
 @Composable
 fun OnboardingScreen(onContinue: () -> Unit) {

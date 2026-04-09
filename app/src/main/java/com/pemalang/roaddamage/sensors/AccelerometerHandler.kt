@@ -8,7 +8,7 @@ import kotlin.math.sqrt
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-class AccelerometerHandler(private val sensorManager: SensorManager, private val delay: Int) :
+class AccelerometerHandler(private val sensorManager: SensorManager, private var currentDelay: Int) :
         SensorEventListener {
     val readings =
             MutableSharedFlow<FloatArray>(
@@ -27,7 +27,20 @@ class AccelerometerHandler(private val sensorManager: SensorManager, private val
         // This allows the AP to sleep while sensor collects data.
         // We buffer up to 1 second of data.
         val maxReportLatencyUs = 1_000_000 // 1 second
-        sensorManager.registerListener(this, s, delay, maxReportLatencyUs)
+        sensorManager.registerListener(this, s, currentDelay, maxReportLatencyUs)
+    }
+
+    /**
+     * Battery Optimization: dynamically change the sampling delay at runtime.
+     * Re-registers the sensor listener with the new delay only if it actually changed.
+     */
+    fun updateDelay(newDelayUs: Int) {
+        if (newDelayUs == currentDelay) return
+        currentDelay = newDelayUs
+        val s = sensor ?: return
+        sensorManager.unregisterListener(this)
+        val maxReportLatencyUs = 1_000_000
+        sensorManager.registerListener(this, s, currentDelay, maxReportLatencyUs)
     }
 
     fun stop() {

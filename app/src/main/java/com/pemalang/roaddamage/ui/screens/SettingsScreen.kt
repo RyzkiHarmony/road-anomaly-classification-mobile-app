@@ -24,12 +24,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pemalang.roaddamage.BuildConfig
+import com.pemalang.roaddamage.ui.components.BottomNavBar
+import com.pemalang.roaddamage.ui.components.NavDestination
 
-private val DarkBg = Color(0xFF1A1D26)
-private val CardBg = Color(0xFF242834)
-private val AccentGreen = Color(0xFF00E676)
-private val TextPrimary = Color(0xFFFFFFFF)
-private val TextSecondary = Color(0xFF8F9BB3)
+import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
+import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
+import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
+import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
+import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+
+private val DarkBg = md_theme_DarkBg
+private val CardBg = md_theme_CardBg
+private val AccentGreen = md_theme_AccentGreen
+private val TextPrimary = md_theme_TextPrimary
+private val TextSecondary = md_theme_TextSecondary
 private val DeleteRed = Color(0xFFEF5350)
 private val StatusGreen = Color(0xFF00E676)
 
@@ -92,51 +100,16 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                         }
                 },
                 bottomBar = {
-                        NavigationBar(containerColor = DarkBg, contentColor = AccentGreen) {
-                                NavigationBarItem(
-                                        selected = false,
-                                        onClick = onNavigateHome,
-                                        icon = { Icon(Icons.Default.Home, "Home") },
-                                        label = { Text("Home") },
-                                        colors =
-                                                NavigationBarItemDefaults.colors(
-                                                        selectedIconColor = AccentGreen,
-                                                        selectedTextColor = AccentGreen,
-                                                        unselectedIconColor = TextSecondary,
-                                                        unselectedTextColor = TextSecondary,
-                                                        indicatorColor = CardBg
-                                                )
-                                )
-                                // Map item omitted as per current app structure
-                                NavigationBarItem(
-                                        selected = false,
-                                        onClick = onNavigateTrips,
-                                        icon = { Icon(Icons.Default.History, "History") },
-                                        label = { Text("History") },
-                                        colors =
-                                                NavigationBarItemDefaults.colors(
-                                                        selectedIconColor = AccentGreen,
-                                                        selectedTextColor = AccentGreen,
-                                                        unselectedIconColor = TextSecondary,
-                                                        unselectedTextColor = TextSecondary,
-                                                        indicatorColor = CardBg
-                                                )
-                                )
-                                NavigationBarItem(
-                                        selected = true,
-                                        onClick = {},
-                                        icon = { Icon(Icons.Default.Settings, "Settings") },
-                                        label = { Text("Settings") },
-                                        colors =
-                                                NavigationBarItemDefaults.colors(
-                                                        selectedIconColor = AccentGreen,
-                                                        selectedTextColor = AccentGreen,
-                                                        unselectedIconColor = TextSecondary,
-                                                        unselectedTextColor = TextSecondary,
-                                                        indicatorColor = CardBg
-                                                )
-                                )
-                        }
+                        BottomNavBar(
+                                selected = NavDestination.Settings,
+                                onNavigate = { dest ->
+                                        when (dest) {
+                                                NavDestination.Home -> onNavigateHome()
+                                                NavDestination.History -> onNavigateTrips()
+                                                else -> { /* already on Settings */ }
+                                        }
+                                }
+                        )
                 }
         ) { padding ->
                 Column(
@@ -172,7 +145,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                         vm.setSampling(sliderHz.toInt())
                                                 },
                                                 valueRange = 10f..100f,
-                                                steps = 8, // (100-10)/10 - 1 = 8 steps for 10Hz
+                                                steps = 9, // (100-10)/10 - 1 = 8 steps for 10Hz
                                                 // increments roughly
                                                 colors =
                                                         SliderDefaults.colors(
@@ -203,7 +176,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 onValueChangeFinished = {
                                                         vm.setGpsInterval(sliderGps.toInt())
                                                 },
-                                                valueRange = 1f..60f,
+                                                valueRange = 1f..20f,
                                                 colors =
                                                         SliderDefaults.colors(
                                                                 thumbColor = AccentGreen,
@@ -216,8 +189,8 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                                 Text("1s", color = TextSecondary, fontSize = 10.sp)
-                                                Text("30s", color = TextSecondary, fontSize = 10.sp)
-                                                Text("60s", color = TextSecondary, fontSize = 10.sp)
+                                                Text("10s", color = TextSecondary, fontSize = 10.sp)
+                                                Text("20s", color = TextSecondary, fontSize = 10.sp)
                                         }
                                 }
 
@@ -234,8 +207,8 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 onValueChangeFinished = {
                                                         vm.setSensitivity(sliderSensitivity)
                                                 },
-                                                valueRange = 1.4f..100.0f,
-                                                steps = 985, // (100.0 - 1.4) / 0.1 ~= 986 steps
+                                                valueRange = 1.4f..20.0f,
+                                                steps = 186, // (20.0 - 1.4) / 0.1 ~= 186 steps
                                                 colors =
                                                         SliderDefaults.colors(
                                                                 thumbColor = AccentGreen,
@@ -273,7 +246,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                         onValueChange = { str ->
                                                                 textValue = str
                                                                 val num = str.toFloatOrNull()
-                                                                if (num != null && num in 1.4f..100.0f) {
+                                                                if (num != null && num in 1.4f..20.0f) {
                                                                         sliderSensitivity = num
                                                                         vm.setSensitivity(num)
                                                                 }
@@ -316,7 +289,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 )
 
                                                 Text(
-                                                        "Max: 100G",
+                                                        "Max: 20G",
                                                         color = TextSecondary,
                                                         fontSize = 10.sp
                                                 )

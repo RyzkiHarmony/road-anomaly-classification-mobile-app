@@ -52,6 +52,18 @@ class RecordingService : Service() {
     private var lastTriggerTime: Long = 0
     private val COOLDOWN_MS = 2000L // 2 seconds cooldown
 
+    companion object {
+        const val CHANNEL_ID = "rdd_recording"
+        const val NOTIF_ID = 1001
+        const val ACTION_START = "com.pemalang.roaddamage.START"
+        const val ACTION_STOP = "com.pemalang.roaddamage.STOP"
+
+
+        // Battery Optimization: WakeLock re-acquire interval
+        private const val WAKELOCK_INTERVAL_MS = 10 * 60 * 1000L // 10 minutes
+        private const val WAKELOCK_TIMEOUT_MS = 12 * 60 * 1000L  // 12 minutes (safety margin)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -95,10 +107,10 @@ class RecordingService : Service() {
         createChannel()
         startForeground(NOTIF_ID, buildNotification("Merekam data"))
 
-        // Acquire WakeLock
+        // Battery Optimization: Use shorter WakeLock with periodic re-acquire
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RoadDamageDetector::Recording")
-        wakeLock?.acquire(4 * 60 * 60 * 1000L) // Limit to 4 hours safety timeout
+        wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
 
         val sManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val samplingHz = runBlocking { userPrefs.getSamplingRateHz() }
@@ -130,7 +142,23 @@ class RecordingService : Service() {
                         }
                     }
 
-                    gps?.locations?.collect { loc -> latestLocation = loc }
+                    // Battery Optimization: Periodically re-acquire WakeLock
+                    // instead of holding a single long WakeLock.
+                    launch {
+                        while (true) {
+                            kotlinx.coroutines.delay(WAKELOCK_INTERVAL_MS)
+                            try {
+                                if (wakeLock?.isHeld == true) wakeLock?.release()
+                                wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+
+                    gps?.locations?.collect { loc ->
+                        latestLocation = loc
+                    }
                 }
 
         scope?.launch {
@@ -234,10 +262,4 @@ class RecordingService : Service() {
                 .build()
     }
 
-    companion object {
-        const val CHANNEL_ID = "rdd_recording"
-        const val NOTIF_ID = 1001
-        const val ACTION_START = "com.pemalang.roaddamage.START"
-        const val ACTION_STOP = "com.pemalang.roaddamage.STOP"
-    }
 }
