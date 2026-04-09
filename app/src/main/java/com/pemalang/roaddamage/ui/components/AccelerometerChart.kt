@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
 import com.pemalang.roaddamage.ui.theme.md_theme_GraphZ
 import com.pemalang.roaddamage.ui.theme.md_theme_GraphX

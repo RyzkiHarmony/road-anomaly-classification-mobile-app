@@ -6,7 +6,7 @@ import com.pemalang.roaddamage.model.CameraEvent
 import com.pemalang.roaddamage.model.SensorReading
 import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.model.UploadStatus
-import com.pemalang.roaddamage.util.Distance
+import com.pemalang.roaddamage.domain.usecase.ProcessGpsReadingUseCase
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -25,7 +25,11 @@ import kotlinx.coroutines.withContext
 @Singleton
 class RecordingRepository
 @Inject
-constructor(private val app: Application, private val tripDao: TripDao) {
+constructor(
+    private val app: Application,
+    private val tripDao: TripDao,
+    private val processGps: ProcessGpsReadingUseCase
+) {
     private var currentTrip: Trip? = null
     private var lastTripId: String? = null
     private var writer: BufferedWriter? = null
@@ -125,21 +129,20 @@ constructor(private val app: Application, private val tripDao: TripDao) {
             _currentSpeed.value = reading.speed
         }
 
-        // Filter GPS based on accuracy (Threshold: 20 meters)
-        if (!reading.latitude.isNaN() && !reading.longitude.isNaN() && 
-            !reading.accuracy.isNaN() && reading.accuracy <= 20.0f) {
-            
-            val lat = reading.latitude
-            val lon = reading.longitude
-            val prevLat = lastLat
-            val prevLon = lastLon
-            
-            if (prevLat != null && prevLon != null) {
-                totalDistance += Distance.haversine(prevLat, prevLon, lat, lon)
-            }
-            lastLat = lat
-            lastLon = lon
-            _points.tryEmit(lat to lon)
+        // Delegate GPS validation and distance calculation to the domain Use Case
+        val gpsResult = processGps(
+            latitude = reading.latitude,
+            longitude = reading.longitude,
+            accuracy = reading.accuracy,
+            prevLat = lastLat,
+            prevLon = lastLon
+        )
+
+        if (gpsResult.isValid) {
+            totalDistance += gpsResult.distanceDelta
+            lastLat = reading.latitude
+            lastLon = reading.longitude
+            _points.tryEmit(reading.latitude to reading.longitude)
             _distance.value = totalDistance
             _gpsLastTs.value = System.currentTimeMillis()
             _gpsAccuracy.value = reading.accuracy

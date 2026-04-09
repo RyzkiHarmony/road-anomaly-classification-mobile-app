@@ -26,6 +26,7 @@ import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.sensors.AccelerometerHandler
 import com.pemalang.roaddamage.sensors.GPSHandler
 import com.pemalang.roaddamage.work.TripUploadWorker
+import com.pemalang.roaddamage.domain.usecase.EvaluateRoadAnomalyUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -42,6 +43,7 @@ class RecordingService : Service() {
 
     @Inject lateinit var userPrefs: UserPrefs
     @Inject lateinit var repository: RecordingRepository
+    @Inject lateinit var evaluateAnomaly: EvaluateRoadAnomalyUseCase
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var scope: CoroutineScope? = null
@@ -189,14 +191,20 @@ class RecordingService : Service() {
                                 bearing = brg
                         )
 
-                // Convert magnitude (m/s^2) to G-Force for threshold comparison
-                val gForce = m / 9.80665f
+                // Delegate anomaly evaluation to the domain Use Case
                 val now = System.currentTimeMillis()
+                val result = evaluateAnomaly(
+                    magnitudeMps2 = m,
+                    thresholdG = threshold,
+                    lastTriggerTimeMs = lastTriggerTime,
+                    cooldownMs = COOLDOWN_MS,
+                    currentTimeMs = now
+                )
 
-                if (gForce > threshold && (now - lastTriggerTime > COOLDOWN_MS)) {
+                if (result.shouldTrigger) {
                     lastTriggerTime = now
                     repository.incrementEventCount()
-                    repository.triggerCamera(gForce)
+                    repository.triggerCamera(result.gForce)
                 }
                 repository.appendReading(reading)
             }
