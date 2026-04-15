@@ -42,7 +42,11 @@ constructor(
     val cameraTrigger: kotlinx.coroutines.flow.SharedFlow<Float> = repo.cameraTrigger
     private val _gpsActive = MutableStateFlow(false)
     val gpsActive: StateFlow<Boolean> = _gpsActive
+    private val _isGpsEnabled = MutableStateFlow(false)
+    val isGpsEnabled: StateFlow<Boolean> = _isGpsEnabled
     val gpsAccuracy: StateFlow<Float?> = repo.gpsAccuracyFlow
+    val pendingUploads: StateFlow<Int> =
+            tripDao.observePendingUploadCount().stateIn(viewModelScope, SharingStarted.Lazily, 0)
     val totalTrips: StateFlow<Int> =
             tripDao.observeCount().stateIn(viewModelScope, SharingStarted.Lazily, 0)
     val totalDistance: StateFlow<Float?> =
@@ -51,6 +55,10 @@ constructor(
             prefs.samplingRateFlow.stateIn(viewModelScope, SharingStarted.Lazily, 50)
     val sensitivityThreshold: StateFlow<Float> =
             prefs.sensitivityFlow.stateIn(viewModelScope, SharingStarted.Lazily, 2.0f)
+    val userName: StateFlow<String> =
+            kotlinx.coroutines.flow.flow {
+                emit(prefs.getUserName() ?: "Pengguna")
+            }.stateIn(viewModelScope, SharingStarted.Lazily, "Pengguna")
     val currentSpeedKmh: StateFlow<Float> =
             repo.currentSpeedFlow
                     .map { (it * 3.6f).coerceAtLeast(0f) }
@@ -129,10 +137,18 @@ constructor(
             }
         }
         viewModelScope.launch {
+            val locationManager = app.getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
             while (true) {
                 val last = repo.gpsLastTs.value
                 val active = (System.currentTimeMillis() - last) <= 5000
                 _gpsActive.value = active
+                
+                _isGpsEnabled.value = try {
+                    locationManager.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER)
+                } catch (e: Exception) {
+                    false
+                }
+                
                 delay(1000)
             }
         }

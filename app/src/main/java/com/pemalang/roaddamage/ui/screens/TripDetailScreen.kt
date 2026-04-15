@@ -227,20 +227,20 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                            "G-Force Monitor",
+                                            "Vertical G-Force (Y-Axis)",
                                             color = TextPrimary,
                                             fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Accelerometer Magnitude", color = TextSecondary, fontSize = 10.sp)
+                            Text("Accelerometer Y-Axis", color = TextSecondary, fontSize = 10.sp)
 
                             Spacer(modifier = Modifier.height(16.dp))
 
                             // Graph
-                            MagnitudeGraph(
-                                    magnitudes = ui.magnitudes,
+                            VerticalGraph(
+                                    values = ui.verticalG,
                                     modifier = Modifier.fillMaxWidth().weight(1f)
                             )
                         }
@@ -707,7 +707,7 @@ private fun MapSection(
 }
 
 @Composable
-private fun MagnitudeGraph(magnitudes: List<Float>, modifier: Modifier = Modifier) {
+private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -747,17 +747,17 @@ private fun MagnitudeGraph(magnitudes: List<Float>, modifier: Modifier = Modifie
             )
         }
 
-        if (magnitudes.isEmpty()) return@Canvas
-
+        if (values.isEmpty()) return@Canvas
+        
         // Draw graph
         val path = Path()
-        val maxVal = 20f // Asumsi max G sekitar 2-3G, tapi magnitude bisa spike. Kita clamp visual.
-        val stepX = w / (magnitudes.size - 1).coerceAtLeast(1)
+        val maxVal = 20f 
+        val stepX = w / (values.size - 1).coerceAtLeast(1)
 
-        magnitudes.forEachIndexed { i, mag ->
+        values.forEachIndexed { i, v ->
             val x = i * stepX
-            // Normalize mag (0..maxVal) to (h..0) - invert Y
-            val y = h - ((mag.coerceIn(0f, maxVal) / maxVal) * h)
+            // Normalize value (0..maxVal) to (h..0)
+            val y = h - ((v.coerceIn(0f, maxVal) / maxVal) * h)
 
             if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }

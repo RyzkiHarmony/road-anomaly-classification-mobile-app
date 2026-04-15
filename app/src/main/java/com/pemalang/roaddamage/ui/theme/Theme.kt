@@ -16,6 +16,6 @@ val md_theme_StatusOrange = Color(0xFFFFAB40)
 val md_theme_StatusRed = Color(0xFFEF5350)    // Used for DeleteRed and SpikeRed
 
 // Graph Colors
-val md_theme_GraphZ = Color(0xFF00E676)
-val md_theme_GraphX = Color(0xFFFF4081)
-val md_theme_GraphY = Color(0xFFFFD740)
+val md_theme_GraphZ = Color(0xFF00E676) // Green
+val md_theme_GraphX = Color(0xFFFFAB40) // Orange
+val md_theme_GraphY = Color(0xFF448AFF) // Blue

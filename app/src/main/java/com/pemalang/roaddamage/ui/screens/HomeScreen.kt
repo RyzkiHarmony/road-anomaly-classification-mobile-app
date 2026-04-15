@@ -82,12 +82,15 @@ fun HomeScreen(
     val ay by vm.ay.collectAsState()
     val az by vm.az.collectAsState()
     val gpsActive by vm.gpsActive.collectAsState()
+    val isGpsEnabled by vm.isGpsEnabled.collectAsState()
     val totalTrips by vm.totalTrips.collectAsState()
     val totalDistance by vm.totalDistance.collectAsState()
     val samplingRate by vm.samplingRate.collectAsState()
     val sensitivity by vm.sensitivityThreshold.collectAsState()
     val eventCount by vm.eventCount.collectAsState()
     val currentSpeedKmh by vm.currentSpeedKmh.collectAsState()
+    val userName by vm.userName.collectAsState()
+    val pendingUploads by vm.pendingUploads.collectAsState()
 
     // ── CameraX setup ──
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -307,6 +310,9 @@ fun HomeScreen(
             samplingRate = samplingRate,
             sensitivity = sensitivity,
             eventCount = eventCount,
+            userName = userName,
+            pendingUploads = pendingUploads,
+            isGpsEnabled = isGpsEnabled,
             cameraPreview = cameraContent
         )
     } else {

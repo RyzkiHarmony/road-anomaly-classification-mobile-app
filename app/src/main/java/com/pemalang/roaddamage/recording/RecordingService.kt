@@ -25,6 +25,7 @@ import com.pemalang.roaddamage.model.SensorReading
 import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.sensors.AccelerometerHandler
 import com.pemalang.roaddamage.sensors.GPSHandler
+import com.pemalang.roaddamage.sensors.GyroscopeHandler
 import com.pemalang.roaddamage.work.TripUploadWorker
 import com.pemalang.roaddamage.domain.usecase.EvaluateRoadAnomalyUseCase
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,11 +49,17 @@ class RecordingService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var scope: CoroutineScope? = null
     private var accel: AccelerometerHandler? = null
+    private var gyro: GyroscopeHandler? = null
     private var gps: GPSHandler? = null
     private var collectingJob: Job? = null
     private var latestLocation: Location? = null
     private var lastTriggerTime: Long = 0
     private val COOLDOWN_MS = 2000L // 2 seconds cooldown
+
+    // Snapshot of the latest gyroscope reading (rad/s).
+    // Updated asynchronously; read on each accelerometer tick.
+    @Volatile
+    private var latestGyro: FloatArray = floatArrayOf(Float.NaN, Float.NaN, Float.NaN)
 
     companion object {
         const val CHANNEL_ID = "rdd_recording"
@@ -86,6 +93,7 @@ class RecordingService : Service() {
 
         // Stop sensors and jobs to prevent background leakage
         accel?.stop()
+        gyro?.stop()
         gps?.stop()
         collectingJob?.cancel()
         scope?.cancel()
@@ -122,6 +130,7 @@ class RecordingService : Service() {
         // noise)
         val threshold = runBlocking { userPrefs.getSensitivityThreshold() }.coerceAtLeast(1.4f)
         accel = AccelerometerHandler(sManager, samplingUs)
+        gyro = GyroscopeHandler(sManager, samplingUs)
         gps = GPSHandler(application, gpsInterval.toLong())
         scope = CoroutineScope(Dispatchers.Default)
         val sc = scope!!
@@ -131,7 +140,17 @@ class RecordingService : Service() {
                     val userId = userPrefs.getOrCreateUserId()
                     repository.startTrip(userId)
                     accel?.start()
+                    gyro?.start()
                     launch { gps?.start() }
+
+                    // Collect gyroscope readings into a snapshot variable.
+                    // This runs concurrently; the accelerometer collect-block
+                    // reads latestGyro on each tick for sensor fusion.
+                    launch {
+                        gyro?.readings?.collect { arr ->
+                            latestGyro = arr
+                        }
+                    }
 
                     // Observe location and distance to update notification
                     launch {
@@ -169,6 +188,13 @@ class RecordingService : Service() {
                 val y = arr[1]
                 val z = arr[2]
                 val m = arr[3]
+
+                // Snapshot latest gyroscope values (rad/s)
+                val gyroSnapshot = latestGyro
+                val gx = gyroSnapshot[0]
+                val gy = gyroSnapshot[1]
+                val gz = gyroSnapshot[2]
+
                 val loc = latestLocation
                 val lat = loc?.latitude ?: Double.NaN
                 val lon = loc?.longitude ?: Double.NaN
@@ -183,6 +209,9 @@ class RecordingService : Service() {
                                 accelY = y,
                                 accelZ = z,
                                 magnitude = m,
+                                gyroX = gx,
+                                gyroY = gy,
+                                gyroZ = gz,
                                 latitude = lat,
                                 longitude = lon,
                                 altitude = alt,

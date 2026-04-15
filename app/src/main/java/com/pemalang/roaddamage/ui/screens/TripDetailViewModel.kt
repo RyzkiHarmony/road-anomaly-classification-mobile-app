@@ -39,6 +39,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
             val trip: Trip? = null,
             val points: List<Pair<Double, Double>> = emptyList(),
             val magnitudes: List<Float> = emptyList(),
+            val verticalG: List<Float> = emptyList(),
             val cameraEvents: List<CameraEvent> = emptyList()
     )
     sealed class Event {
@@ -64,7 +65,8 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         }
         val pts = mutableListOf<Pair<Double, Double>>()
         val mags = mutableListOf<Float>()
-        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, cameraEvents = emptyList())
+        val vertG = mutableListOf<Float>()
+        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, verticalG = vertG, cameraEvents = emptyList())
         
         viewModelScope.launch {
             tripDao.observeCameraEvents(tripId).collect { newEvents ->
@@ -88,11 +90,24 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                         if (!line.startsWith("timestamp")) {
                             if (index % step == 0) {
                                 val parts = line.split(",")
-                                if (parts.size >= 7) {
+                                // Deteksi format CSV (ada gyro atau tidak)
+                                // Format baru: timestamp,ax,ay,az,magnitude,gx,gy,gz,lat,lon,...
+                                // Format lama: timestamp,ax,ay,az,magnitude,lat,lon,...
+                                val isNewFormat = parts.size >= 14 || (parts.size > 8 && line.contains(",gx,")) // Header parsing is better, but since we skip it, size heuristic works.
+                                
+                                // Actually a safer way is just checking if it's the new format by length or just relying on header.
+                                // Instead of guessing, let's just properly map it.
+                                // Since new format has 14 columns, and old format has 11 columns.
+                                val latIndex = if (parts.size >= 14) 8 else 5
+                                val lonIndex = if (parts.size >= 14) 9 else 6
+                                
+                                if (parts.size > lonIndex) {
                                     val mag = parts[4].toFloatOrNull()
-                                    val lat = parts[5].toDoubleOrNull()
-                                    val lon = parts[6].toDoubleOrNull()
+                                    val ay = parts[2].toFloatOrNull()
+                                    val lat = parts[latIndex].toDoubleOrNull()
+                                    val lon = parts[lonIndex].toDoubleOrNull()
                                     if (mag != null) mags.add(mag)
+                                    if (ay != null) vertG.add(ay)
                                     if (lat != null && lon != null) pts.add(lat to lon)
                                 }
                             }
@@ -105,7 +120,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         } catch (t: Throwable) {
             events.tryEmit(Event.Error("Gagal membaca file: ${t.message ?: ""}"))
         }
-        _ui.value = _ui.value.copy(points = pts, magnitudes = mags)
+        _ui.value = _ui.value.copy(points = pts, magnitudes = mags, verticalG = vertG)
     }
 
     fun enqueueUpload() {

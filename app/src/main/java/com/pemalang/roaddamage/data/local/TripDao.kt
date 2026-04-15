@@ -32,5 +32,7 @@ interface TripDao {
 
     @Query("SELECT COUNT(*) FROM trips") fun observeCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM trips WHERE uploadStatus != 'UPLOADED'") fun observePendingUploadCount(): Flow<Int>
+
     @Query("SELECT SUM(distance) FROM trips") fun observeTotalDistance(): Flow<Float?>
 }

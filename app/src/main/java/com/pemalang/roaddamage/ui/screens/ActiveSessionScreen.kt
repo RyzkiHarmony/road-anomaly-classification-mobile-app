@@ -172,18 +172,18 @@ fun ActiveSessionScreen(
                         Column {
                             Text("ACCELEROMETER", color = TextSecondary, fontSize = 10.sp)
                             Text(
-                                "%.2f G-Force".format(az.lastOrNull() ?: 0f),
+                                "%.2f G-Force".format((ay.lastOrNull() ?: 0f) / 9.80665f),
                                 color = TextPrimary,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                         Row {
-                            LegendItem(GraphLineZ, "Z")
-                            Spacer(Modifier.width(8.dp))
                             LegendItem(GraphLineX, "X")
                             Spacer(Modifier.width(8.dp))
                             LegendItem(GraphLineY, "Y")
+                            Spacer(Modifier.width(8.dp))
+                            LegendItem(GraphLineZ, "Z")
                         }
                     }
 

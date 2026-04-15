@@ -95,7 +95,7 @@ constructor(
                 )
         withContext(Dispatchers.IO) {
             writer = BufferedWriter(FileWriter(file, true))
-            writer?.write("timestamp,ax,ay,az,magnitude,lat,lon,alt,speed,accuracy,bearing\n")
+            writer?.write("timestamp,ax,ay,az,magnitude,gx,gy,gz,lat,lon,alt,speed,accuracy,bearing\n")
             writer?.flush()
         }
         currentTrip = trip
@@ -205,6 +205,9 @@ constructor(
                           .append(reading.accelY).append(",")
                           .append(reading.accelZ).append(",")
                           .append(reading.magnitude).append(",")
+                          .append(if (reading.gyroX.isNaN()) "" else reading.gyroX).append(",")
+                          .append(if (reading.gyroY.isNaN()) "" else reading.gyroY).append(",")
+                          .append(if (reading.gyroZ.isNaN()) "" else reading.gyroZ).append(",")
                           .append(if (reading.latitude.isNaN()) "" else reading.latitude).append(",")
                           .append(if (reading.longitude.isNaN()) "" else reading.longitude).append(",")
                           .append(if (reading.altitude.isNaN()) "" else reading.altitude).append(",")
