@@ -16,6 +16,11 @@ import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
 import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
 import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
 import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 /**
  * Enum representing the three primary navigation destinations.
@@ -43,7 +48,12 @@ fun BottomNavBar(
     selected: NavDestination,
     onNavigate: (NavDestination) -> Unit
 ) {
-    NavigationBar(containerColor = DarkBg, contentColor = AccentGreen) {
+    NavigationBar(
+        modifier = Modifier.height(80.dp),
+        containerColor = DarkBg,
+        contentColor = AccentGreen,
+        windowInsets = WindowInsets.navigationBars
+    ) {
         NavDestination.entries.forEach { dest ->
             NavigationBarItem(
                 selected = dest == selected,

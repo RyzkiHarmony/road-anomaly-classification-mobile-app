@@ -85,35 +85,45 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                 
                 BufferedReader(FileReader(file)).use { br ->
                     var line = br.readLine()
-                    var index = 0
-                    while (line != null) {
-                        if (!line.startsWith("timestamp")) {
+                    if (line != null) {
+                        val headers = line.lowercase().split(",").map { it.trim() }
+                        val tsIdx = headers.indexOf("timestamp")
+                        val axIdx = headers.indexOf("ax")
+                        val ayIdx = headers.indexOf("ay")
+                        val azIdx = headers.indexOf("az")
+                        val magIdx = headers.indexOf("magnitude")
+                        val latIdx = headers.indexOf("lat")
+                        val lonIdx = headers.indexOf("lon")
+
+                        var index = 0
+                        line = br.readLine()
+                        while (line != null) {
                             if (index % step == 0) {
                                 val parts = line.split(",")
-                                // Deteksi format CSV (ada gyro atau tidak)
-                                // Format baru: timestamp,ax,ay,az,magnitude,gx,gy,gz,lat,lon,...
-                                // Format lama: timestamp,ax,ay,az,magnitude,lat,lon,...
-                                val isNewFormat = parts.size >= 14 || (parts.size > 8 && line.contains(",gx,")) // Header parsing is better, but since we skip it, size heuristic works.
-                                
-                                // Actually a safer way is just checking if it's the new format by length or just relying on header.
-                                // Instead of guessing, let's just properly map it.
-                                // Since new format has 14 columns, and old format has 11 columns.
-                                val latIndex = if (parts.size >= 14) 8 else 5
-                                val lonIndex = if (parts.size >= 14) 9 else 6
-                                
-                                if (parts.size > lonIndex) {
-                                    val mag = parts[4].toFloatOrNull()
-                                    val ay = parts[2].toFloatOrNull()
-                                    val lat = parts[latIndex].toDoubleOrNull()
-                                    val lon = parts[lonIndex].toDoubleOrNull()
+                                if (latIdx != -1 && lonIdx != -1 && parts.size > latIdx && parts.size > lonIdx) {
+                                    val ax = if (axIdx != -1 && parts.size > axIdx) parts[axIdx].toFloatOrNull() ?: 0f else 0f
+                                    val ay = if (ayIdx != -1 && parts.size > ayIdx) parts[ayIdx].toFloatOrNull() ?: 0f else 0f
+                                    val az = if (azIdx != -1 && parts.size > azIdx) parts[azIdx].toFloatOrNull() ?: 0f else 0f
+                                    
+                                    val mag = if (magIdx != -1 && parts.size > magIdx) {
+                                        parts[magIdx].toFloatOrNull()
+                                    } else {
+                                        kotlin.math.sqrt(ax * ax + ay * ay + az * az)
+                                    }
+                                    
+                                    val lat = parts[latIdx].toDoubleOrNull()
+                                    val lon = parts[lonIdx].toDoubleOrNull()
+                                    
                                     if (mag != null) mags.add(mag)
-                                    if (ay != null) vertG.add(ay)
-                                    if (lat != null && lon != null) pts.add(lat to lon)
+                                    vertG.add(ay)
+                                    if (lat != null && lon != null && !lat.isNaN() && !lon.isNaN()) {
+                                        pts.add(lat to lon)
+                                    }
                                 }
                             }
                             index++
+                            line = br.readLine()
                         }
-                        line = br.readLine()
                     }
                 }
             }

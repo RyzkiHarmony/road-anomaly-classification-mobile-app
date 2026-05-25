@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.hardware.SensorManager
 import android.location.Location
 import android.os.Build
@@ -26,6 +27,8 @@ import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.sensors.AccelerometerHandler
 import com.pemalang.roaddamage.sensors.GPSHandler
 import com.pemalang.roaddamage.sensors.GyroscopeHandler
+import com.pemalang.roaddamage.sensors.LinearAccelerationHandler
+import com.pemalang.roaddamage.sensors.GravityHandler
 import com.pemalang.roaddamage.work.TripUploadWorker
 import com.pemalang.roaddamage.domain.usecase.EvaluateRoadAnomalyUseCase
 import dagger.hilt.android.AndroidEntryPoint
@@ -38,6 +41,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class RecordingService : Service() {
@@ -50,6 +54,8 @@ class RecordingService : Service() {
     private var scope: CoroutineScope? = null
     private var accel: AccelerometerHandler? = null
     private var gyro: GyroscopeHandler? = null
+    private var linearAccel: LinearAccelerationHandler? = null
+    private var gravity: GravityHandler? = null
     private var gps: GPSHandler? = null
     private var collectingJob: Job? = null
     private var latestLocation: Location? = null
@@ -60,6 +66,12 @@ class RecordingService : Service() {
     // Updated asynchronously; read on each accelerometer tick.
     @Volatile
     private var latestGyro: FloatArray = floatArrayOf(Float.NaN, Float.NaN, Float.NaN)
+
+    @Volatile
+    private var latestLinearAccel: FloatArray = floatArrayOf(Float.NaN, Float.NaN, Float.NaN)
+
+    @Volatile
+    private var latestGravity: FloatArray = floatArrayOf(Float.NaN, Float.NaN, Float.NaN)
 
     companion object {
         const val CHANNEL_ID = "rdd_recording"
@@ -94,6 +106,8 @@ class RecordingService : Service() {
         // Stop sensors and jobs to prevent background leakage
         accel?.stop()
         gyro?.stop()
+        linearAccel?.stop()
+        gravity?.stop()
         gps?.stop()
         collectingJob?.cancel()
         scope?.cancel()
@@ -115,7 +129,11 @@ class RecordingService : Service() {
 
     private fun startRecording() {
         createChannel()
-        startForeground(NOTIF_ID, buildNotification("Merekam data"))
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, buildNotification("Merekam data"), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        } else {
+            startForeground(NOTIF_ID, buildNotification("Merekam data"))
+        }
 
         // Battery Optimization: Use shorter WakeLock with periodic re-acquire
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -131,6 +149,8 @@ class RecordingService : Service() {
         val threshold = runBlocking { userPrefs.getSensitivityThreshold() }.coerceAtLeast(1.4f)
         accel = AccelerometerHandler(sManager, samplingUs)
         gyro = GyroscopeHandler(sManager, samplingUs)
+        linearAccel = LinearAccelerationHandler(sManager, samplingUs)
+        gravity = GravityHandler(sManager, samplingUs)
         gps = GPSHandler(application, gpsInterval.toLong())
         scope = CoroutineScope(Dispatchers.Default)
         val sc = scope!!
@@ -141,6 +161,8 @@ class RecordingService : Service() {
                     repository.startTrip(userId)
                     accel?.start()
                     gyro?.start()
+                    linearAccel?.start()
+                    gravity?.start()
                     launch { gps?.start() }
 
                     // Collect gyroscope readings into a snapshot variable.
@@ -149,6 +171,18 @@ class RecordingService : Service() {
                     launch {
                         gyro?.readings?.collect { arr ->
                             latestGyro = arr
+                        }
+                    }
+
+                    launch {
+                        linearAccel?.readings?.collect { arr ->
+                            latestLinearAccel = arr
+                        }
+                    }
+
+                    launch {
+                        gravity?.readings?.collect { arr ->
+                            latestGravity = arr
                         }
                     }
 
@@ -195,6 +229,17 @@ class RecordingService : Service() {
                 val gy = gyroSnapshot[1]
                 val gz = gyroSnapshot[2]
 
+                // Snapshot latest linear acceleration & gravity values
+                val linSnapshot = latestLinearAccel
+                val lax = linSnapshot[0]
+                val lay = linSnapshot[1]
+                val laz = linSnapshot[2]
+
+                val gravSnapshot = latestGravity
+                val grx = gravSnapshot[0]
+                val gry = gravSnapshot[1]
+                val grz = gravSnapshot[2]
+
                 val loc = latestLocation
                 val lat = loc?.latitude ?: Double.NaN
                 val lon = loc?.longitude ?: Double.NaN
@@ -212,6 +257,12 @@ class RecordingService : Service() {
                                 gyroX = gx,
                                 gyroY = gy,
                                 gyroZ = gz,
+                                linearAccelX = lax,
+                                linearAccelY = lay,
+                                linearAccelZ = laz,
+                                gravityX = grx,
+                                gravityY = gry,
+                                gravityZ = grz,
                                 latitude = lat,
                                 longitude = lon,
                                 altitude = alt,
@@ -241,16 +292,14 @@ class RecordingService : Service() {
     }
 
     private fun stopRecording() {
-        launchFinish()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
-    }
-
-    private fun launchFinish() {
         CoroutineScope(Dispatchers.Default).launch {
             val trip = repository.finishTrip()
             if (trip != null) {
                 checkAutoUpload(trip)
+            }
+            withContext(Dispatchers.Main) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
             }
         }
     }

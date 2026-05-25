@@ -95,7 +95,7 @@ constructor(
                 )
         withContext(Dispatchers.IO) {
             writer = BufferedWriter(FileWriter(file, true))
-            writer?.write("timestamp,ax,ay,az,magnitude,gx,gy,gz,lat,lon,alt,speed,accuracy,bearing\n")
+            writer?.write("timestamp,ax,ay,az,gx,gy,gz,lin_ax,lin_ay,lin_az,grav_x,grav_y,grav_z,speed,lat,lon\n")
             writer?.flush()
         }
         currentTrip = trip
@@ -204,16 +204,18 @@ constructor(
                           .append(reading.accelX).append(",")
                           .append(reading.accelY).append(",")
                           .append(reading.accelZ).append(",")
-                          .append(reading.magnitude).append(",")
                           .append(if (reading.gyroX.isNaN()) "" else reading.gyroX).append(",")
                           .append(if (reading.gyroY.isNaN()) "" else reading.gyroY).append(",")
                           .append(if (reading.gyroZ.isNaN()) "" else reading.gyroZ).append(",")
-                          .append(if (reading.latitude.isNaN()) "" else reading.latitude).append(",")
-                          .append(if (reading.longitude.isNaN()) "" else reading.longitude).append(",")
-                          .append(if (reading.altitude.isNaN()) "" else reading.altitude).append(",")
+                          .append(if (reading.linearAccelX.isNaN()) "" else reading.linearAccelX).append(",")
+                          .append(if (reading.linearAccelY.isNaN()) "" else reading.linearAccelY).append(",")
+                          .append(if (reading.linearAccelZ.isNaN()) "" else reading.linearAccelZ).append(",")
+                          .append(if (reading.gravityX.isNaN()) "" else reading.gravityX).append(",")
+                          .append(if (reading.gravityY.isNaN()) "" else reading.gravityY).append(",")
+                          .append(if (reading.gravityZ.isNaN()) "" else reading.gravityZ).append(",")
                           .append(if (reading.speed.isNaN()) "" else reading.speed).append(",")
-                          .append(if (reading.accuracy.isNaN()) "" else reading.accuracy).append(",")
-                          .append(if (reading.bearing.isNaN()) "" else reading.bearing).append("\n")
+                          .append(if (reading.latitude.isNaN()) "" else reading.latitude).append(",")
+                          .append(if (reading.longitude.isNaN()) "" else reading.longitude).append("\n")
                         write(sb.toString())
                     }
                 }

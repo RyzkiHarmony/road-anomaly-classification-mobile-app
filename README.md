@@ -1,89 +1,87 @@
-# Road Damage Detector - Accelerometer Sensor App 🚗📉
+# Road Damage Detector - Sensor & Camera Logger 🚗📉📸
 
-**Road Damage Detector** adalah aplikasi Android pencatat dan penganalisis sensor (**Sensor Logger & Analyzer**) yang berfokus pada penggunaan **Accelerometer** (akselerometer) untuk mendeteksi anomali permukaan jalan. Aplikasi ini mengubah smartphone Anda menjadi alat monitoring getaran presisi tinggi yang dikombinasikan dengan data geospasial (GPS).
+**Road Damage Detector** adalah aplikasi Android canggih untuk memantau, mencatat, dan menganalisis kondisi permukaan jalan. Aplikasi ini mengubah smartphone Anda menjadi alat telemetri presisi tinggi yang menggabungkan data **Accelerometer**, **Gyroscope**, **GPS**, dan **Kamera (Computer Vision Context)** untuk mendeteksi anomali jalan seperti lubang atau polisi tidur secara otomatis.
 
-Fungsi utama aplikasi ini adalah menangkap data mentah dari sensor akselerometer 3-sumbu (X, Y, Z) secara real-time untuk mengidentifikasi guncangan yang mengindikasikan kerusakan jalan (seperti lubang atau polisi tidur), sambil merekam jejak lokasi perjalanan.
+## 🌟 Fitur Utama
 
-## 📱 Fitur Unggulan (Sensor & Data)
-
-- **High-Frequency Accelerometer Logging**:
-  - Merekam data akselerasi mentah pada sumbu X, Y, dan Z.
-  - Menghitung **Magnitudo Total** ($\sqrt{x^2 + y^2 + z^2}$) untuk analisis intensitas guncangan.
-  - Frekuensi sampling yang dapat disesuaikan (default: tinggi) untuk menangkap getaran cepat.
-- **GPS Geospatial Mapping**: Sinkronisasi setiap titik data getaran dengan koordinat Latitude, Longitude, Kecepatan, dan Akurasi lokasi.
+- **Dashboard Modern & Intuitif**:
+  - Antarmuka berbasis Material Design 3 dengan Jetpack Compose.
+  - Ringkasan statistik *real-time*: Total Perjalanan, Total Jarak, Status GPS, Status Sensor, dan antrean *Upload Tertunda*.
+- **High-Frequency Sensor Logging**:
+  - Merekam data **Accelerometer** (X, Y, Z) dan **Gyroscope** (X, Y, Z) secara bersamaan.
+  - Menghitung **G-Force** / Magnitudo Total secara otomatis.
+  - Frekuensi *sampling* (Hz) dan *Sensitivity Threshold* (G-Force) yang dapat disesuaikan.
+- **Smart Camera Trigger (CameraX)**:
+  - Mengambil foto kondisi jalan secara otomatis (berjalan di *background* tanpa mengganggu UI) ketika guncangan melewati ambang batas (*threshold*) yang ditentukan.
+  - Mekanisme *cooldown* cerdas untuk mencegah pengambilan foto berlebihan pada area jalan rusak yang panjang.
+- **GPS & Geospatial Mapping**: 
+  - Sinkronisasi getaran dengan koordinat Latitude, Longitude, Altitude, Kecepatan, Akurasi, dan Bearing.
+  - Visualisasi rute perjalanan menggunakan peta *offline-ready* (**Osmdroid**).
 - **Real-time Sensor Visualization**:
-  - **Live Graph**: Menampilkan gelombang getaran akselerometer secara langsung saat berkendara.
-  - **Magnitude Monitoring**: Indikator visual kekuatan guncangan.
-- **Data Export & Analysis**:
-  - Menyimpan data mentah dalam format **CSV** yang siap diolah (kompatibel dengan Excel, MATLAB, Python/Pandas).
-  - Kolom data lengkap: `timestamp`, `accel_x`, `accel_y`, `accel_z`, `magnitude`, `latitude`, `longitude`, `speed`, `bearing`.
-- **Background Service**: Proses perekaman berjalan di _foreground service_ untuk memastikan data tetap terekam meskipun layar mati atau aplikasi diminimalkan.
-- **Visualisasi Perjalanan**:
-  - Grafik Magnitudo Guncangan (Accelerometer Magnitude).
-  - Peta rute perjalanan (dilengkapi dengan marker lokasi).
-- **Manajemen Riwayat**: Simpan, lihat kembali, dan hapus riwayat perjalanan (_Trip History_).
-- **Sinkronisasi Data**:
-  - Penyimpanan lokal menggunakan CSV (untuk data sensor mentah) dan Room Database (untuk metadata).
-  - Mekanisme _Auto-upload_ menggunakan **WorkManager** untuk mengirim data ke server saat kondisi jaringan memungkinkan.
-- **Pengaturan Pengguna**: Kustomisasi profil pengguna (Nama, Email, Jenis Kendaraan) dan parameter sensor.
+  - Grafik *Live* 3-sumbu (X, Y, Z) saat sesi perekaman aktif.
+- **Data Export & Manajemen Riwayat**:
+  - Menyimpan data dalam format **CSV** yang siap diolah (kompatibel dengan Python/Pandas/MATLAB).
+  - Fitur *Backward Compatibility* untuk membaca format CSV versi lama dengan mulus.
+  - Ekspor perjalanan lengkap (File CSV, Metadata JSON, dan file Foto Anomali) ke folder *Downloads* perangkat Anda.
+- **Background Service & Battery Optimization**:
+  - Berjalan tangguh di latar belakang (*Foreground Service*) dengan manajemen *WakeLock* dinamis untuk efisiensi baterai.
+- **Auto-Sync & Cloud Upload**:
+  - Mengunggah data perjalanan (CSV) beserta foto-foto anomali (Multipart JPEG) ke server menggunakan **WorkManager** saat terhubung ke jaringan Wi-Fi (*Unmetered*).
 
 ## 🛠️ Tech Stack & Library
 
-Project ini dibangun menggunakan teknologi Android modern:
-
 - **Language**: [Kotlin](https://kotlinlang.org/)
 - **UI Toolkit**: [Jetpack Compose](https://developer.android.com/jetpack/compose) (Material Design 3)
-- **Architecture**: MVVM (Model-View-ViewModel)
+- **Architecture**: MVVM + Clean Architecture Concepts
 - **Dependency Injection**: [Hilt](https://dagger.dev/hilt/)
-- **Asynchronous**: Coroutines & Flow
+- **Camera**: [CameraX](https://developer.android.com/training/camerax) (ImageCapture headless)
+- **Maps**: [Osmdroid](https://github.com/osmdroid/osmdroid)
+- **Asynchronous**: Coroutines & StateFlow
 - **Local Storage**:
-  - [Room Database](https://developer.android.com/training/data-storage/room) (SQLite wrapper)
-  - File System (CSV Storage)
-  - DataStore (User Preferences)
-- **Background Processing**:
-  - [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) (Reliable background jobs)
-  - Foreground Services
-- **Networking**: [Retrofit](https://square.github.io/retrofit/) + OkHttp
-- **Sensors**: Android Sensor Framework (Accelerometer) & Google Location Services (FusedLocationProvider)
+  - [Room Database](https://developer.android.com/training/data-storage/room) (Metadata Trip & Event Kamera)
+  - DataStore Preferences (Pengaturan Pengguna)
+  - File System (Penyimpanan file CSV & JPEG)
+- **Background Processing**: [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) & Foreground Services
+- **Networking**: [Retrofit](https://square.github.io/retrofit/) + OkHttp (Multipart Uploads)
 
 ## 📂 Struktur Project
 
-```
+```text
 com.pemalang.roaddamage
-├── data
-│   ├── local      # Room DAO & Database
-│   ├── prefs      # DataStore Preferences
-│   └── remote     # Retrofit Service
+├── data           # Akses Data (Room DAO, DataStore, Retrofit API)
 ├── di             # Hilt Dependency Injection Modules
-├── model          # Data Classes & Entities
-├── recording      # Service & Repository untuk sensor logic
-├── sensors        # Handler untuk Accelerometer & GPS
-├── ui
-│   ├── navigation # Konfigurasi Navigasi Compose
-│   └── screens    # Layar UI (Home, TripList, TripDetail, Settings)
-├── util           # Utility classes (e.g., Distance calculation)
-└── work           # WorkManager Workers (Upload logic)
+├── domain         # Use Case Layer (Logika deteksi anomali G-Force)
+├── model          # Data Classes (Trip, SensorReading, CameraEvent)
+├── recording      # Service & Repository utama (Lifecycle perekaman)
+├── sensors        # Handler Hardware (Accelerometer, Gyroscope, GPS)
+├── ui             # Komponen UI Jetpack Compose
+│   ├── components # Widget Reusable (Grafik, Dialog, Navbar)
+│   ├── navigation # Setup Navigasi Aplikasi
+│   ├── screens    # Layar Utama (Dashboard, ActiveSession, TripDetail, dll)
+│   └── theme      # Konfigurasi Warna & Tipografi
+├── util           # Utility (Kalkulasi Jarak)
+└── work           # Background Worker (Auto-Upload Multipart ke Server)
 ```
 
 ## 🚀 Cara Menjalankan
 
-1.  **Clone Repository**
-    ```bash
-    git clone https://github.com/username/RoadDamageDetector.git
-    ```
-2.  **Buka di Android Studio**
-    - Pastikan menggunakan Android Studio versi terbaru (Hedgehog/Iguana atau lebih baru).
-    - Tunggu proses _Gradle Sync_ selesai.
-3.  **Build & Run**
-    - Sambungkan perangkat Android fisik (disarankan karena emulator sulit mensimulasikan sensor akselerometer dengan akurat).
-    - Pastikan izin Lokasi dan Notifikasi diberikan saat aplikasi pertama kali dijalankan.
+1. **Clone Repository**
+   ```bash
+   git clone <repository-url>
+   ```
+2. **Buka di Android Studio**
+   - Disarankan menggunakan Android Studio Koala atau versi terbaru.
+   - Tunggu proses *Gradle Sync* selesai.
+3. **Build & Run**
+   - **Wajib menggunakan perangkat Android fisik**. Emulator tidak dapat mensimulasikan sensor akselerometer, giroskop, dan sistem kamera fisik secara akurat.
+   - Izinkan akses Kamera, Lokasi (Presisi Tinggi), dan Notifikasi saat pertama kali membuka aplikasi.
 
 ## 📝 Requirements
 
-- **Minimum SDK**: Android 8.0 (API Level 26)
-- **Target SDK**: Android 14 (API Level 34)
-- **Hardware**: Smartphone dengan sensor Akselerometer dan GPS.
+- **Minimum SDK**: Android 7.0 (API Level 24)
+- **Target SDK**: Android 34 (API Level 34)
+- **Hardware**: Smartphone dengan sensor Akselerometer, Giroskop, GPS, dan Kamera Belakang.
 
 ## 📄 Lisensi
 
-Project ini dibuat untuk tujuan penelitian dan pengembangan sistem deteksi kerusakan jalan.
+Project ini dibuat untuk tujuan penelitian dan pengembangan sistem deteksi kerusakan jalan (Project Skripsi).
