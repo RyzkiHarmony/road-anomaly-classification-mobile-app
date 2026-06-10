@@ -1,6 +1,7 @@
 package com.pemalang.roaddamage.ui.screens
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
@@ -68,6 +69,28 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
 
     // State for image viewing
+    
+    LaunchedEffect(tripId) {
+        vm.load(tripId)
+    }
+
+    LaunchedEffect(vm.events) {
+        vm.events.collect { event ->
+            when (event) {
+                is TripDetailViewModel.Event.Deleted -> onBack()
+                is TripDetailViewModel.Event.Error -> host.showSnackbar(event.message)
+                is TripDetailViewModel.Event.Saved -> host.showSnackbar(event.path)
+                is TripDetailViewModel.Event.Share -> {
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/csv"
+                        putExtra(Intent.EXTRA_STREAM, event.uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(Intent.createChooser(shareIntent, "Share Trip Data"))
+                }
+            }
+        }
+    }
 
     Scaffold(
             containerColor = DarkBg,

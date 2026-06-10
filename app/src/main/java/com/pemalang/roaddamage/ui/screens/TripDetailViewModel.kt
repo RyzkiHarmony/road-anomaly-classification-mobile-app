@@ -14,6 +14,8 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.pemalang.roaddamage.data.local.TripDao
+import com.pemalang.roaddamage.data.local.TripDataCacheManager
+import com.pemalang.roaddamage.data.local.CachedTripData
 import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.model.UploadStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,7 +36,11 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 @HiltViewModel
 class TripDetailViewModel
 @Inject
-constructor(private val app: Application, private val tripDao: TripDao) : ViewModel() {
+constructor(
+    private val app: Application, 
+    private val tripDao: TripDao,
+    private val cacheManager: TripDataCacheManager
+) : ViewModel() {
     data class UiState(
             val trip: Trip? = null,
             val points: List<Pair<Double, Double>> = emptyList(),
@@ -65,13 +71,27 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
             events.tryEmit(Event.Deleted) // Trigger onBack() to close the endless buffering screen
             return
         }
-        val pts = mutableListOf<Pair<Double, Double>>()
-        val mags = mutableListOf<Float>()
-        val vertG = mutableListOf<Float>()
         val anomalyEventsList = tripDao.getAnomalyEventsForTrip(tripId)
-        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, verticalG = vertG, anomalyEvents = anomalyEventsList)
+        
+        val cached = cacheManager.get(tripId)
+        if (cached != null) {
+            _ui.value = UiState(
+                trip = trip, 
+                points = cached.points, 
+                magnitudes = cached.magnitudes, 
+                verticalG = cached.verticalG, 
+                anomalyEvents = anomalyEventsList
+            )
+            return
+        }
+
+        _ui.value = UiState(trip = trip, anomalyEvents = anomalyEventsList) // Display trip details immediately, graph data will be loaded later
         
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val pts = mutableListOf<Pair<Double, Double>>()
+            val mags = mutableListOf<Float>()
+            val vertG = mutableListOf<Float>()
+
             try {
                 val file = File(trip.dataFilePath)
                 if (file.exists()) {
@@ -130,8 +150,15 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
             FirebaseCrashlytics.getInstance().recordException(t)
             events.tryEmit(Event.Error("Gagal membaca file: ${t.message ?: ""}"))
         }
+
+        // Publish to UI only after background parsing is completely done
+        val ptsList = pts.toList()
+        val magsList = mags.toList()
+        val vertGList = vertG.toList()
+
+        cacheManager.put(tripId, CachedTripData(ptsList, magsList, vertGList))
+        _ui.value = _ui.value.copy(points = ptsList, magnitudes = magsList, verticalG = vertGList)
         }
-        _ui.value = _ui.value.copy(points = pts, magnitudes = mags, verticalG = vertG)
     }
 
     fun enqueueUpload() {
@@ -165,7 +192,9 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
             try {
                 // 1. Delete CSV data file
                 try { File(trip.dataFilePath).delete() } catch (_: Throwable) {}
-                // 2. Delete trip record
+                // 2. Delete from cache
+                cacheManager.remove(trip.tripId)
+                // 3. Delete trip record
                 tripDao.deleteById(trip.tripId)
                 events.tryEmit(Event.Deleted)
             } catch (t: Throwable) {
