@@ -2,7 +2,7 @@ package com.pemalang.roaddamage.recording
 
 import android.app.Application
 import com.pemalang.roaddamage.data.local.TripDao
-import com.pemalang.roaddamage.model.CameraEvent
+import com.pemalang.roaddamage.model.AnomalyEvent
 import com.pemalang.roaddamage.model.SensorReading
 import com.pemalang.roaddamage.model.Trip
 import com.pemalang.roaddamage.model.UploadStatus
@@ -61,6 +61,8 @@ constructor(
                     extraBufferCapacity = 8,
                     onBufferOverflow = BufferOverflow.DROP_OLDEST
             )
+    private val _anomalyProbabilities = MutableStateFlow(floatArrayOf(1f, 0f, 0f)) // Non-Event, Pothole, Speed Bump
+    
     val readingsFlow: MutableSharedFlow<SensorReading> = _readings
     val pointsFlow: MutableSharedFlow<Pair<Double, Double>> = _points
     val distanceFlow: StateFlow<Float> = _distance
@@ -71,6 +73,7 @@ constructor(
     val gpsAccuracyFlow: StateFlow<Float?> = _gpsAccuracy
     val currentSpeedFlow: StateFlow<Float> = _currentSpeed
     val cameraTrigger: MutableSharedFlow<Float> = _cameraTrigger
+    val anomalyProbabilities: StateFlow<FloatArray> = _anomalyProbabilities
 
     // IO Optimization: Buffer for writing to file
     private val readingBuffer = ArrayList<SensorReading>(60)
@@ -95,7 +98,7 @@ constructor(
                 )
         withContext(Dispatchers.IO) {
             writer = BufferedWriter(FileWriter(file, true))
-            writer?.write("timestamp,ax,ay,az,gx,gy,gz,lin_ax,lin_ay,lin_az,grav_x,grav_y,grav_z,speed,lat,lon\n")
+            writer?.write("timestamp,ax,ay,az,gx,gy,gz,lin_ax,lin_ay,lin_az,grav_x,grav_y,grav_z,speed,lat,lon,prob_none,prob_pothole,prob_speedbump\n")
             writer?.flush()
         }
         currentTrip = trip
@@ -166,25 +169,21 @@ constructor(
         return updated
     }
 
-    suspend fun triggerCamera(magnitude: Float) {
-        _cameraTrigger.tryEmit(magnitude)
+    fun updateAnomalyProbabilities(probs: FloatArray) {
+        _anomalyProbabilities.value = probs
     }
 
-    suspend fun saveCameraEvent(path: String, magnitude: Float) {
-        // Fallback to lastTripId if currentTrip just ended
-        val targetTripId = currentTrip?.tripId ?: lastTripId ?: return
-        val eventId = UUID.randomUUID().toString()
-        val event =
-                CameraEvent(
-                        eventId = eventId,
-                        tripId = targetTripId,
-                        timestamp = System.currentTimeMillis(),
-                        latitude = lastLat,
-                        longitude = lastLon,
-                        imagePath = path,
-                        triggerMagnitude = magnitude
-                )
-        tripDao.insertCameraEvent(event)
+    suspend fun saveAnomalyEvent(timestamp: Long, lat: Double, lon: Double, type: String, confidence: Float) {
+        val tripId = currentTrip?.tripId ?: return
+        val event = AnomalyEvent(
+            tripId = tripId,
+            timestamp = timestamp,
+            latitude = lat,
+            longitude = lon,
+            anomalyType = type,
+            confidence = confidence
+        )
+        tripDao.insertAnomalyEvent(event)
     }
 
     private suspend fun flushBufferSuspend() {
@@ -215,7 +214,10 @@ constructor(
                           .append(if (reading.gravityZ.isNaN()) "" else reading.gravityZ).append(",")
                           .append(if (reading.speed.isNaN()) "" else reading.speed).append(",")
                           .append(if (reading.latitude.isNaN()) "" else reading.latitude).append(",")
-                          .append(if (reading.longitude.isNaN()) "" else reading.longitude).append("\n")
+                          .append(if (reading.longitude.isNaN()) "" else reading.longitude).append(",")
+                          .append(reading.probNone).append(",")
+                          .append(reading.probPothole).append(",")
+                          .append(reading.probSpeedbump).append("\n")
                         write(sb.toString())
                     }
                 }

@@ -105,16 +105,9 @@ class SettingsViewModel @Inject constructor(
             try {
                 val list = tripDao.getAll()
                 list.filter { it.uploadStatus == UploadStatus.UPLOADED }.forEach { t ->
-                    // 1. Delete photo files physically
-                    val camEvents = tripDao.getCameraEvents(t.tripId)
-                    for (event in camEvents) {
-                        try { File(event.imagePath).delete() } catch (_: Throwable) {}
-                    }
-                    // 2. Delete camera events from database
-                    tripDao.deleteCameraEventsByTripId(t.tripId)
-                    // 3. Delete CSV data file
+                    // 1. Delete CSV data file
                     try { File(t.dataFilePath).delete() } catch (_: Throwable) {}
-                    // 4. Delete trip record
+                    // 2. Delete trip record
                     tripDao.deleteById(t.tripId)
                 }
             } catch (_: Throwable) {

@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-import com.pemalang.roaddamage.model.CameraEvent
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 
 @HiltViewModel
 class TripDetailViewModel
@@ -40,7 +40,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
             val points: List<Pair<Double, Double>> = emptyList(),
             val magnitudes: List<Float> = emptyList(),
             val verticalG: List<Float> = emptyList(),
-            val cameraEvents: List<CameraEvent> = emptyList()
+            val anomalyEvents: List<com.pemalang.roaddamage.model.AnomalyEvent> = emptyList()
     )
     sealed class Event {
         object Deleted : Event()
@@ -60,22 +60,21 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
     suspend fun load(tripId: String) {
         val trip = tripDao.getById(tripId)
         if (trip == null) {
+            kotlinx.coroutines.delay(500) // Allow UI collector to start
             events.tryEmit(Event.Error("Trip tidak ditemukan"))
+            events.tryEmit(Event.Deleted) // Trigger onBack() to close the endless buffering screen
             return
         }
         val pts = mutableListOf<Pair<Double, Double>>()
         val mags = mutableListOf<Float>()
         val vertG = mutableListOf<Float>()
-        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, verticalG = vertG, cameraEvents = emptyList())
+        val anomalyEventsList = tripDao.getAnomalyEventsForTrip(tripId)
+        _ui.value = UiState(trip = trip, points = pts, magnitudes = mags, verticalG = vertG, anomalyEvents = anomalyEventsList)
         
-        viewModelScope.launch {
-            tripDao.observeCameraEvents(tripId).collect { newEvents ->
-                _ui.value = _ui.value.copy(cameraEvents = newEvents)
-            }
-        }
-        try {
-            val file = File(trip.dataFilePath)
-            if (file.exists()) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val file = File(trip.dataFilePath)
+                if (file.exists()) {
                 // Downsampling strategy for large files to prevent OOM and UI lag
                 // Target approx 3000 points for optimal graph/map performance
                 val fileLen = file.length()
@@ -128,7 +127,9 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                 }
             }
         } catch (t: Throwable) {
+            FirebaseCrashlytics.getInstance().recordException(t)
             events.tryEmit(Event.Error("Gagal membaca file: ${t.message ?: ""}"))
+        }
         }
         _ui.value = _ui.value.copy(points = pts, magnitudes = mags, verticalG = vertG)
     }
@@ -162,19 +163,13 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
         val trip = _ui.value.trip ?: return
         viewModelScope.launch {
             try {
-                // 1. Delete photo files physically
-                val camEvents = tripDao.getCameraEvents(trip.tripId)
-                for (event in camEvents) {
-                    try { File(event.imagePath).delete() } catch (_: Throwable) {}
-                }
-                // 2. Delete camera events from database
-                tripDao.deleteCameraEventsByTripId(trip.tripId)
-                // 3. Delete CSV data file
+                // 1. Delete CSV data file
                 try { File(trip.dataFilePath).delete() } catch (_: Throwable) {}
-                // 4. Delete trip record
+                // 2. Delete trip record
                 tripDao.deleteById(trip.tripId)
                 events.tryEmit(Event.Deleted)
             } catch (t: Throwable) {
+                FirebaseCrashlytics.getInstance().recordException(t)
                 events.tryEmit(Event.Error("Gagal menghapus: ${t.message ?: ""}"))
             }
         }
@@ -197,6 +192,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                     events.tryEmit(Event.Error("File data tidak ditemukan"))
                 }
             } catch (t: Throwable) {
+                FirebaseCrashlytics.getInstance().recordException(t)
                 events.tryEmit(Event.Error("Gagal membagikan: ${t.message}"))
             }
         }
@@ -234,24 +230,9 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
                         }
                     }
 
-                    // Export Photos
-                    val cameraEvents = _ui.value.cameraEvents
-                    var savedPhotos = 0
-                    for (event in cameraEvents) {
-                        val photoFile = File(event.imagePath)
-                        if (photoFile.exists()) {
-                            val imgUri = insertDownloads(photoFile.name, "image/jpeg", folderName)
-                            if (imgUri != null) {
-                                app.contentResolver.openOutputStream(imgUri)?.use { out ->
-                                    photoFile.inputStream().use { inp -> inp.copyTo(out) }
-                                }
-                                savedPhotos++
-                            }
-                        }
-                    }
-
-                    events.tryEmit(Event.Saved("Tersimpan di Download/RoadDamageDetector/$folderName ($savedPhotos foto)"))
+                    events.tryEmit(Event.Saved("Tersimpan di Download/RoadDamageDetector/$folderName"))
                 } catch (t: Throwable) {
+                    FirebaseCrashlytics.getInstance().recordException(t)
                     events.tryEmit(Event.Error("Gagal menyimpan ke Downloads: ${t.message ?: ""}"))
                 }
             } else {
@@ -276,6 +257,7 @@ constructor(private val app: Application, private val tripDao: TripDao) : ViewMo
 
             events.tryEmit(Event.Saved("Tersimpan di ${destCsv.parent}"))
         } catch (t: Throwable) {
+            FirebaseCrashlytics.getInstance().recordException(t)
             events.tryEmit(Event.Error("Gagal menyimpan: ${t.message ?: ""}"))
         }
     }

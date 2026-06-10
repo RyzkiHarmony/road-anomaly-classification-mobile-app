@@ -75,18 +75,7 @@ constructor(
                 val fileBody = file.asRequestBody("text/csv".toMediaType())
                 val filePart = MultipartBody.Part.createFormData("file", file.name, fileBody)
                 
-                val events = tripDao.getCameraEvents(trip.tripId)
-                val imageParts = events.mapNotNull { event ->
-                    val imgFile = File(event.imagePath)
-                    if (imgFile.exists()) {
-                        val requestFile = imgFile.asRequestBody("image/jpeg".toMediaType())
-                        MultipartBody.Part.createFormData("images", imgFile.name, requestFile)
-                    } else {
-                        null
-                    }
-                }
-
-                val resp = api.uploadTrip(userIdBody, tripIdBody, metadataBody, filePart, imageParts)
+                val resp = api.uploadTrip(userIdBody, tripIdBody, metadataBody, filePart)
                 val ok = resp.isSuccessful && (resp.body()?.success == true)
                 if (ok) {
                     tripDao.upsert(trip.copy(uploadStatus = UploadStatus.UPLOADED))
@@ -175,16 +164,9 @@ constructor(
 
     fun deleteTrip(trip: Trip) {
         viewModelScope.launch {
-            // 1. Delete photo files physically
-            val camEvents = tripDao.getCameraEvents(trip.tripId)
-            for (event in camEvents) {
-                try { java.io.File(event.imagePath).delete() } catch (_: Throwable) {}
-            }
-            // 2. Delete camera events from database
-            tripDao.deleteCameraEventsByTripId(trip.tripId)
-            // 3. Delete CSV data file
+            // 1. Delete CSV data file
             try { java.io.File(trip.dataFilePath).delete() } catch (_: Throwable) {}
-            // 4. Delete trip record
+            // 2. Delete trip record
             tripDao.delete(trip)
         }
     }

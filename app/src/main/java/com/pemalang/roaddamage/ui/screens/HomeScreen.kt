@@ -10,12 +10,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.resolutionselector.ResolutionSelector
-import androidx.camera.core.resolutionselector.ResolutionStrategy
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,66 +84,7 @@ fun HomeScreen(
     val currentSpeedKmh by vm.currentSpeedKmh.collectAsState()
     val userName by vm.userName.collectAsState()
     val pendingUploads by vm.pendingUploads.collectAsState()
-
-    // ── CameraX setup ──
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(ctx) }
-    val imageCapture = remember {
-        ImageCapture.Builder()
-            .setResolutionSelector(
-                ResolutionSelector.Builder()
-                    .setResolutionStrategy(
-                        ResolutionStrategy(
-                            android.util.Size(1280, 720),
-                            ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                        )
-                    )
-                    .build()
-            )
-            .build()
-    }
-    val camPermissionGranted = remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) ==
-                    PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    // ── Camera trigger logic ──
-    LaunchedEffect(Unit) {
-        vm.cameraTrigger.collect { mag ->
-            if (mag > 0 && isRecording && camPermissionGranted.value) {
-                delay(300) // Anti-blur
-                try {
-                    val photoFile = File(
-                        ctx.getExternalFilesDir(null),
-                        "IMG_${System.currentTimeMillis()}.jpg"
-                    )
-                    val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-                    imageCapture.takePicture(
-                        outputOptions,
-                        ContextCompat.getMainExecutor(ctx),
-                        object : ImageCapture.OnImageSavedCallback {
-                            override fun onError(exc: ImageCaptureException) {
-                                Log.e("Camera", "Capture failed", exc)
-                            }
-                            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                vm.saveCameraEvent(photoFile.absolutePath, mag)
-                                Toast.makeText(
-                                    ctx,
-                                    "Foto diambil! (%.1f G)".format(mag),
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    )
-                } catch (e: Exception) {
-                    Log.e("Camera", "Error", e)
-                }
-            }
-        }
-    }
-
+    val anomalyProbabilities by vm.anomalyProbabilities.collectAsState()
     // ── Permission state ──
     var showRationale by remember { mutableStateOf(false) }
     var showSettingsRedirect by remember { mutableStateOf(false) }
@@ -159,8 +93,7 @@ fun HomeScreen(
     val requiredPermissions = remember {
         val perms = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.CAMERA
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
         if (Build.VERSION.SDK_INT >= 33) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -173,12 +106,10 @@ fun HomeScreen(
     ) { res ->
         val locGranted = res[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 res[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        val camGranted = res[Manifest.permission.CAMERA] == true
-        camPermissionGranted.value = camGranted
         val notifGranted = Build.VERSION.SDK_INT < 33 ||
                 res[Manifest.permission.POST_NOTIFICATIONS] == true
 
-        if (locGranted && camGranted && notifGranted) {
+        if (locGranted && notifGranted) {
             startService(ctx, RecordingService.ACTION_START)
         } else {
             val activity = ctx as? Activity
@@ -223,59 +154,6 @@ fun HomeScreen(
         }
         if (!isRecording) timerText.value = "00:00"
     }
-
-    // ── Camera content (headless – no preview stream) ──
-    val cameraContent: @Composable () -> Unit = {
-        if (camPermissionGranted.value) {
-            LaunchedEffect(isRecording) {
-                if (isRecording) {
-                    try {
-                        val cameraProvider = cameraProviderFuture.get()
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            imageCapture
-                        )
-                    } catch (e: Exception) {
-                        Log.e("Camera", "Bind error", e)
-                    }
-                } else {
-                    try {
-                        val cameraProvider = cameraProviderFuture.get()
-                        cameraProvider.unbindAll()
-                    } catch (_: Exception) {}
-                }
-            }
-            Box(
-                Modifier.fillMaxSize().background(Color(0xFF1E2630)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = AccentGreen.copy(alpha = 0.6f),
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        if (isRecording) "Camera Ready" else "Camera Standby",
-                        color = TextSecondary,
-                        fontSize = 10.sp
-                    )
-                }
-            }
-        } else {
-            Box(
-                Modifier.fillMaxSize().background(Color(0xFF2C3240)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("Camera Permission Required", color = Color.White, fontSize = 10.sp)
-            }
-        }
-    }
-
     // ── Screen delegation ──
     if (!isRecording) {
         DashboardScreen(
@@ -312,8 +190,7 @@ fun HomeScreen(
             eventCount = eventCount,
             userName = userName,
             pendingUploads = pendingUploads,
-            isGpsEnabled = isGpsEnabled,
-            cameraPreview = cameraContent
+            isGpsEnabled = isGpsEnabled
         )
     } else {
         ActiveSessionScreen(
@@ -325,7 +202,7 @@ fun HomeScreen(
             gpsActive = gpsActive,
             currentSpeedKmh = currentSpeedKmh,
             onStop = { startService(ctx, RecordingService.ACTION_STOP) },
-            cameraPreview = cameraContent
+            anomalyProbabilities = anomalyProbabilities
         )
     }
 }

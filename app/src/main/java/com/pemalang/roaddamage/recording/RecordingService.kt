@@ -20,6 +20,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.pemalang.roaddamage.R
 import com.pemalang.roaddamage.data.prefs.UserPrefs
 import com.pemalang.roaddamage.model.SensorReading
@@ -30,6 +31,8 @@ import com.pemalang.roaddamage.sensors.GyroscopeHandler
 import com.pemalang.roaddamage.sensors.LinearAccelerationHandler
 import com.pemalang.roaddamage.sensors.GravityHandler
 import com.pemalang.roaddamage.work.TripUploadWorker
+import com.pemalang.roaddamage.domain.OnnxModelRunner
+import com.pemalang.roaddamage.domain.SensorFusionProcessor
 import com.pemalang.roaddamage.domain.usecase.EvaluateRoadAnomalyUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit
@@ -61,6 +64,9 @@ class RecordingService : Service() {
     private var latestLocation: Location? = null
     private var lastTriggerTime: Long = 0
     private val COOLDOWN_MS = 2000L // 2 seconds cooldown
+    
+    private var onnxRunner: OnnxModelRunner? = null
+    private var fusionProcessor: SensorFusionProcessor? = null
 
     // Snapshot of the latest gyroscope reading (rad/s).
     // Updated asynchronously; read on each accelerometer tick.
@@ -100,18 +106,27 @@ class RecordingService : Service() {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
         wakeLock = null
 
         // Stop sensors and jobs to prevent background leakage
-        accel?.stop()
-        gyro?.stop()
-        linearAccel?.stop()
-        gravity?.stop()
-        gps?.stop()
-        collectingJob?.cancel()
-        scope?.cancel()
-        scope = null
+        try {
+            onnxRunner?.close()
+            onnxRunner = null
+            fusionProcessor = null
+            
+            accel?.stop()
+            gyro?.stop()
+            linearAccel?.stop()
+            gravity?.stop()
+            gps?.stop()
+            collectingJob?.cancel()
+            scope?.cancel()
+            scope = null
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -136,9 +151,13 @@ class RecordingService : Service() {
         }
 
         // Battery Optimization: Use shorter WakeLock with periodic re-acquire
-        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RoadDamageDetector::Recording")
-        wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "RoadDamageDetector::Recording")
+            wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
 
         val sManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val samplingHz = runBlocking { userPrefs.getSamplingRateHz() }
@@ -147,23 +166,37 @@ class RecordingService : Service() {
         // Ensure threshold is at least 1.4G to prevent triggering on engine vibration (1.0G +
         // noise)
         val threshold = runBlocking { userPrefs.getSensitivityThreshold() }.coerceAtLeast(1.4f)
-        accel = AccelerometerHandler(sManager, samplingUs)
-        gyro = GyroscopeHandler(sManager, samplingUs)
-        linearAccel = LinearAccelerationHandler(sManager, samplingUs)
-        gravity = GravityHandler(sManager, samplingUs)
-        gps = GPSHandler(application, gpsInterval.toLong())
+        
+        try {
+            accel = AccelerometerHandler(sManager, samplingUs)
+            gyro = GyroscopeHandler(sManager, samplingUs)
+            linearAccel = LinearAccelerationHandler(sManager, samplingUs)
+            gravity = GravityHandler(sManager, samplingUs)
+            gps = GPSHandler(application, gpsInterval.toLong())
+            
+            onnxRunner = OnnxModelRunner(this)
+            onnxRunner?.initialize()
+            fusionProcessor = SensorFusionProcessor()
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
+
         scope = CoroutineScope(Dispatchers.Default)
         val sc = scope!!
 
         collectingJob =
                 sc.launch {
-                    val userId = userPrefs.getOrCreateUserId()
-                    repository.startTrip(userId)
-                    accel?.start()
-                    gyro?.start()
-                    linearAccel?.start()
-                    gravity?.start()
-                    launch { gps?.start() }
+                    try {
+                        val userId = userPrefs.getOrCreateUserId()
+                        repository.startTrip(userId)
+                        accel?.start()
+                        gyro?.start()
+                        linearAccel?.start()
+                        gravity?.start()
+                        launch { gps?.start() }
+                    } catch (e: Exception) {
+                        FirebaseCrashlytics.getInstance().recordException(e)
+                    }
 
                     // Collect gyroscope readings into a snapshot variable.
                     // This runs concurrently; the accelerometer collect-block
@@ -207,6 +240,7 @@ class RecordingService : Service() {
                                 wakeLock?.acquire(WAKELOCK_TIMEOUT_MS)
                             } catch (e: Exception) {
                                 e.printStackTrace()
+                                FirebaseCrashlytics.getInstance().recordException(e)
                             }
                         }
                     }
@@ -215,6 +249,37 @@ class RecordingService : Service() {
                         latestLocation = loc
                     }
                 }
+                
+        // Listen to ONNX Inference Triggers
+        scope?.launch {
+            fusionProcessor?.inferenceTrigger?.collect { tensorData ->
+                try {
+                    val probs = onnxRunner?.predict(tensorData)
+                    if (probs != null) {
+                        repository.updateAnomalyProbabilities(probs)
+                        
+                        // probs: [0]=Non-Event, [1]=Pothole, [2]=SpeedBump
+                        val potholeProb = probs[1]
+                        val speedBumpProb = probs[2]
+                        if (potholeProb > 0.51f || speedBumpProb > 0.51f) {
+                            val now = System.currentTimeMillis()
+                            if (now - lastTriggerTime > COOLDOWN_MS) {
+                                lastTriggerTime = now
+                                repository.incrementEventCount()
+                                val type = if (potholeProb > speedBumpProb) "Pothole" else "Speed Bump"
+                                val conf = if (potholeProb > speedBumpProb) potholeProb else speedBumpProb
+                                val loc = latestLocation
+                                if (loc != null) {
+                                    repository.saveAnomalyEvent(now, loc.latitude, loc.longitude, type, conf)
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    FirebaseCrashlytics.getInstance().recordException(e)
+                }
+            }
+        }
 
         scope?.launch {
             accel?.readings?.collect { arr ->
@@ -268,24 +333,19 @@ class RecordingService : Service() {
                                 altitude = alt,
                                 speed = spd,
                                 accuracy = acc,
-                                bearing = brg
+                                bearing = brg,
+                                probNone = repository.anomalyProbabilities.value[0],
+                                probPothole = repository.anomalyProbabilities.value[1],
+                                probSpeedbump = repository.anomalyProbabilities.value[2]
                         )
 
-                // Delegate anomaly evaluation to the domain Use Case
-                val now = System.currentTimeMillis()
-                val result = evaluateAnomaly(
-                    magnitudeMps2 = m,
-                    thresholdG = threshold,
-                    lastTriggerTimeMs = lastTriggerTime,
-                    cooldownMs = COOLDOWN_MS,
-                    currentTimeMs = now
-                )
-
-                if (result.shouldTrigger) {
-                    lastTriggerTime = now
-                    repository.incrementEventCount()
-                    repository.triggerCamera(result.gForce)
+                // Update Sensor Fusion Processor
+                fusionProcessor?.updateGravity(grx, gry, grz)
+                if (!spd.isNaN()) {
+                    fusionProcessor?.updateSpeed(spd)
                 }
+                fusionProcessor?.processLinearAcceleration(lax, lay, laz)
+
                 repository.appendReading(reading)
             }
         }
@@ -293,41 +353,54 @@ class RecordingService : Service() {
 
     private fun stopRecording() {
         CoroutineScope(Dispatchers.Default).launch {
-            val trip = repository.finishTrip()
-            if (trip != null) {
-                checkAutoUpload(trip)
-            }
-            withContext(Dispatchers.Main) {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+            try {
+                val trip = repository.finishTrip()
+                if (trip != null) {
+                    checkAutoUpload(trip)
+                }
+            } catch (e: Exception) {
+                FirebaseCrashlytics.getInstance().recordException(e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
         }
     }
 
     private suspend fun checkAutoUpload(trip: Trip) {
-        val auto = userPrefs.getAutoUpload()
-        if (auto) {
-            scheduleUpload(trip)
+        try {
+            val auto = userPrefs.getAutoUpload()
+            if (auto) {
+                scheduleUpload(trip)
+            }
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
         }
     }
 
     private fun scheduleUpload(trip: Trip) {
-        val input = Data.Builder().putString("tripId", trip.tripId).build()
+        try {
+            val input = Data.Builder().putString("tripId", trip.tripId).build()
 
-        // WiFi Only constraint for Auto Upload
-        val constraints =
-                Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()
+            // WiFi Only constraint for Auto Upload
+            val constraints =
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED).build()
 
-        val request =
-                OneTimeWorkRequestBuilder<TripUploadWorker>()
-                        .setInputData(input)
-                        .setConstraints(constraints)
-                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
-                        .addTag("upload_trip_${trip.tripId}")
-                        .build()
+            val request =
+                    OneTimeWorkRequestBuilder<TripUploadWorker>()
+                            .setInputData(input)
+                            .setConstraints(constraints)
+                            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+                            .addTag("upload_trip_${trip.tripId}")
+                            .build()
 
-        WorkManager.getInstance(applicationContext)
-                .enqueueUniqueWork("upload_trip_${trip.tripId}", ExistingWorkPolicy.KEEP, request)
+            WorkManager.getInstance(applicationContext)
+                    .enqueueUniqueWork("upload_trip_${trip.tripId}", ExistingWorkPolicy.KEEP, request)
+        } catch (e: Exception) {
+            FirebaseCrashlytics.getInstance().recordException(e)
+        }
     }
 
     private fun createChannel() {

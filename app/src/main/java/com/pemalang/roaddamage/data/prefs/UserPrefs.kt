@@ -28,7 +28,7 @@ constructor(private val app: Application, private val store: DataStore<Preferenc
     private val vehicleTypeKey = stringPreferencesKey("vehicle_type")
     private val sensitivityKey = floatPreferencesKey("sensitivity_threshold")
 
-    val samplingRateFlow: Flow<Int> = store.data.map { prefs -> prefs[samplingHzKey] ?: 50 }
+    val samplingRateFlow: Flow<Int> = store.data.map { prefs -> prefs[samplingHzKey] ?: 100 }
 
     suspend fun getOrCreateUserId(): String {
         val prefs = store.data.first()
@@ -41,7 +41,7 @@ constructor(private val app: Application, private val store: DataStore<Preferenc
 
     suspend fun getSamplingRateHz(): Int {
         val prefs = store.data.first()
-        return prefs[samplingHzKey] ?: 50
+        return prefs[samplingHzKey] ?: 100
     }
     suspend fun setSamplingRateHz(hz: Int) {
         store.edit { it[samplingHzKey] = hz }

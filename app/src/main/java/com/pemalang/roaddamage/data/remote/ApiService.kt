@@ -14,8 +14,7 @@ interface ApiService {
         @Part("userId") userId: RequestBody,
         @Part("tripId") tripId: RequestBody,
         @Part("metadata") metadata: RequestBody,
-        @Part file: MultipartBody.Part,
-        @Part images: List<MultipartBody.Part>
+        @Part file: MultipartBody.Part
     ): Response<UploadResponse>
 }
 

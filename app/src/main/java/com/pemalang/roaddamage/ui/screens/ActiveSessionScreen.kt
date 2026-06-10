@@ -68,7 +68,7 @@ fun ActiveSessionScreen(
     gpsActive: Boolean,
     currentSpeedKmh: Float,
     onStop: () -> Unit,
-    cameraPreview: @Composable () -> Unit
+    anomalyProbabilities: FloatArray
 ) {
     Scaffold(
         containerColor = DarkBg,
@@ -139,20 +139,43 @@ fun ActiveSessionScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Camera Preview ──
+            // ── Detection Dashboard ──
+            val probPothole = anomalyProbabilities.getOrNull(1) ?: 0f
+            val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
+
+            val bgColor = when {
+                probPothole > 0.51f -> Color(0xFFC62828) // Red
+                probSpeedBump > 0.5f -> Color(0xFFF9A825) // Yellow
+                else -> Color(0xFF2E7D32) // Green
+            }
+            val textLabel = when {
+                probPothole > 0.51f -> "LUBANG TERDETEKSI"
+                probSpeedBump > 0.5f -> "POLISI TIDUR"
+                else -> "JALAN NORMAL"
+            }
+            val subText = "Pothole: ${String.format("%.1f%%", probPothole * 100)} | Bump: ${String.format("%.1f%%", probSpeedBump * 100)}"
+
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.Black),
+                colors = CardDefaults.cardColors(containerColor = bgColor),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.fillMaxWidth().height(120.dp)
             ) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    cameraPreview()
-                    Text(
-                        "Visual Context",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 10.sp,
-                        modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)
-                    )
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            textLabel,
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            subText,
+                            color = Color.White.copy(alpha = 0.9f),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
 

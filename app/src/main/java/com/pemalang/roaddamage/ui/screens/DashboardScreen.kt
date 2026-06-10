@@ -70,8 +70,7 @@ fun DashboardScreen(
     eventCount: Int,
     userName: String,
     pendingUploads: Int,
-    isGpsEnabled: Boolean,
-    cameraPreview: @Composable () -> Unit
+    isGpsEnabled: Boolean
 ) {
     Scaffold(
         containerColor = DarkBg,
@@ -393,11 +392,6 @@ fun DashboardScreen(
                 }
                 
                 Spacer(Modifier.height(32.dp))
-            }
-            
-            // Render camera preview but keep it invisible so CameraX binds correctly.
-            Box(modifier = Modifier.size(1.dp).clip(CircleShape)) {
-                cameraPreview()
             }
         }
     }

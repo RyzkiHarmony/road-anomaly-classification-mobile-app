@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pemalang.roaddamage.model.CameraEvent
 import com.pemalang.roaddamage.model.UploadStatus
 import java.text.SimpleDateFormat
 import java.util.*
@@ -69,75 +68,6 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
 
     // State for image viewing
-    var selectedEvent by remember { mutableStateOf<CameraEvent?>(null) }
-    var showFullScreenImage by remember { mutableStateOf(false) }
-
-    // Event Preview Dialog (Thumbnail)
-    if (selectedEvent != null && !showFullScreenImage) {
-        EventPreviewDialog(
-                event = selectedEvent!!,
-                onDismiss = { selectedEvent = null },
-                onImageClick = { showFullScreenImage = true }
-        )
-    }
-
-    // Full Screen Image Dialog
-    if (selectedEvent != null && showFullScreenImage) {
-        FullScreenImageDialog(event = selectedEvent!!, onDismiss = { showFullScreenImage = false })
-    }
-
-    if (showDeleteDialog.value) {
-        AlertDialog(
-                onDismissRequest = { showDeleteDialog.value = false },
-                title = {
-                    Text("Konfirmasi Hapus", color = TextPrimary, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Text(
-                            "Apakah Anda yakin ingin menghapus data perjalanan ini? Data yang dihapus tidak dapat dikembalikan.",
-                            color = TextSecondary
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                            onClick = {
-                                vm.deleteTrip()
-                                showDeleteDialog.value = false
-                            }
-                    ) { Text("Hapus", color = SpikeRed, fontWeight = FontWeight.Bold) }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteDialog.value = false }) {
-                        Text("Batal", color = TextSecondary)
-                    }
-                },
-                containerColor = CardBg,
-                textContentColor = TextSecondary,
-                titleContentColor = TextPrimary
-        )
-    }
-
-    LaunchedEffect(tripId) { vm.load(tripId) }
-    LaunchedEffect(Unit) {
-        vm.events.collect { e ->
-            when (e) {
-                is TripDetailViewModel.Event.Deleted -> onBack()
-                is TripDetailViewModel.Event.Error -> host.showSnackbar(e.message)
-                is TripDetailViewModel.Event.Saved -> host.showSnackbar(e.path)
-                is TripDetailViewModel.Event.Share -> {
-                    val intent =
-                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                type = "text/csv"
-                                putExtra(android.content.Intent.EXTRA_STREAM, e.uri)
-                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                    ctx.startActivity(
-                            android.content.Intent.createChooser(intent, "Bagikan Perjalanan")
-                    )
-                }
-            }
-        }
-    }
 
     Scaffold(
             containerColor = DarkBg,
@@ -189,8 +119,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                     MapSection(
                             ctx = ctx,
                             points = ui.points,
-                            cameraEvents = ui.cameraEvents,
-                            onEventClick = { event -> selectedEvent = event }
+                            anomalyEvents = ui.anomalyEvents
                     )
 
                     // Overlay stats on map bottom
@@ -246,16 +175,6 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                         }
                     }
 
-                    if (ui.cameraEvents.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        // Collapsible Photo Gallery
-                        PhotoGallerySection(
-                                cameraEvents = ui.cameraEvents,
-                                onEventClick = { event -> selectedEvent = event }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Upload Section
                     val isUploaded = trip.uploadStatus == UploadStatus.UPLOADED
@@ -361,157 +280,6 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
 }
 
 @Composable
-fun PhotoGallerySection(
-        cameraEvents: List<CameraEvent>,
-        onEventClick: (CameraEvent) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header with toggle
-            Row(
-                    modifier = Modifier.fillMaxWidth()
-                            .clickable { expanded = !expanded },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                            Icons.Default.PhotoLibrary,
-                            null,
-                            tint = AccentGreen,
-                            modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                            "Foto Kerusakan",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                            "(${cameraEvents.size} foto)",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                    )
-                }
-                Icon(
-                        if (expanded) Icons.Default.ExpandLess
-                        else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) "Minimize" else "Expand",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(24.dp)
-                )
-            }
-
-            // Collapsible grid content
-            if (expanded) {
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Use a Column with manual grid layout to avoid nested scroll issues
-                val columns = 3
-                val rows = (cameraEvents.size + columns - 1) / columns
-
-                for (row in 0 until rows) {
-                    Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        for (col in 0 until columns) {
-                            val index = row * columns + col
-                            if (index < cameraEvents.size) {
-                                val event = cameraEvents[index]
-                                PhotoThumbnailItem(
-                                        event = event,
-                                        onClick = { onEventClick(event) },
-                                        modifier = Modifier.weight(1f)
-                                )
-                            } else {
-                                // Empty spacer to maintain grid alignment
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
-                    if (row < rows - 1) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PhotoThumbnailItem(
-        event: CameraEvent,
-        onClick: () -> Unit,
-        modifier: Modifier = Modifier
-) {
-    Card(
-            colors = CardDefaults.cardColors(containerColor = Color.Black),
-            shape = RoundedCornerShape(8.dp),
-            modifier = modifier
-                    .aspectRatio(1f)
-                    .clickable(onClick = onClick)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                    path = event.imagePath,
-                    contentDescription = "Foto kerusakan",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    reqWidth = 200,
-                    reqHeight = 200
-            )
-            // G-force badge
-            Box(
-                    modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(4.dp)
-                            .background(
-                                    SpikeRed.copy(alpha = 0.85f),
-                                    RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                        text = "%.1fG".format(event.triggerMagnitude),
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                )
-            }
-            // No-GPS indicator
-            if (event.latitude == null || event.longitude == null) {
-                Box(
-                        modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(4.dp)
-                                .background(
-                                        StatusOrange.copy(alpha = 0.85f),
-                                        RoundedCornerShape(4.dp)
-                                )
-                                .padding(horizontal = 4.dp, vertical = 2.dp)
-                ) {
-                    Icon(
-                            Icons.Default.LocationOff,
-                            contentDescription = "No GPS",
-                            tint = Color.White,
-                            modifier = Modifier.size(10.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun DetailStatCard(label: String, value: String, unit: String, highlight: Boolean = false) {
     Card(
             colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = 0.9f)),
@@ -561,8 +329,7 @@ private fun markerDrawable(ctx: Context, color: Int): BitmapDrawable {
 private fun MapSection(
         ctx: Context,
         points: List<Pair<Double, Double>>,
-        cameraEvents: List<CameraEvent> = emptyList(),
-        onEventClick: (CameraEvent) -> Unit
+        anomalyEvents: List<com.pemalang.roaddamage.model.AnomalyEvent> = emptyList()
 ) {
     val appCtx = ctx.applicationContext
     val base = remember { java.io.File(appCtx.cacheDir, "osmdroid") }
@@ -672,27 +439,17 @@ private fun MapSection(
                             }
                     mapView.overlays.add(startMarker)
                     mapView.overlays.add(endMarker)
-
-                    // Camera Markers
-                    cameraEvents.forEach { event ->
-                        if (event.latitude != null && event.longitude != null) {
-                            val marker =
-                                    Marker(mapView).apply {
-                                        position = GeoPoint(event.latitude, event.longitude)
-                                        title = "Foto (${event.triggerMagnitude} G)"
-                                        icon =
-                                                markerDrawable(
-                                                        ctx,
-                                                        AndroidColor.YELLOW
-                                                ) // Use yellow for photos
-                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                                        setOnMarkerClickListener { m, _ ->
-                                            onEventClick(event)
-                                            true
-                                        }
-                                    }
-                            mapView.overlays.add(marker)
+                    
+                    // Add anomaly markers
+                    anomalyEvents.forEach { event ->
+                        val marker = Marker(mapView).apply {
+                            position = GeoPoint(event.latitude, event.longitude)
+                            title = "${event.anomalyType} (Conf: ${"%.2f".format(event.confidence)})"
+                            val color = if (event.anomalyType == "Pothole") AndroidColor.RED else AndroidColor.YELLOW
+                            icon = markerDrawable(ctx, color)
+                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                         }
+                        mapView.overlays.add(marker)
                     }
 
                     // Center map
@@ -766,239 +523,3 @@ private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
     }
 }
 
-// Helper function to load bitmap asynchronously
-suspend fun loadBitmapAsync(path: String, reqWidth: Int? = null, reqHeight: Int? = null): Bitmap? =
-        withContext(Dispatchers.IO) {
-            val file = java.io.File(path)
-            if (!file.exists()) return@withContext null
-
-            try {
-                if (reqWidth != null && reqHeight != null) {
-                    // First decode with inJustDecodeBounds=true to check dimensions
-                    val options =
-                            android.graphics.BitmapFactory.Options().apply {
-                                inJustDecodeBounds = true
-                            }
-                    android.graphics.BitmapFactory.decodeFile(path, options)
-
-                    // Calculate inSampleSize
-                    options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
-
-                    // Decode bitmap with inSampleSize set
-                    options.inJustDecodeBounds = false
-                    android.graphics.BitmapFactory.decodeFile(path, options)
-                } else {
-                    android.graphics.BitmapFactory.decodeFile(path)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
-        }
-
-fun calculateInSampleSize(
-        options: android.graphics.BitmapFactory.Options,
-        reqWidth: Int,
-        reqHeight: Int
-): Int {
-    // Raw height and width of image
-    val (height: Int, width: Int) = options.outHeight to options.outWidth
-    var inSampleSize = 1
-
-    if (height > reqHeight || width > reqWidth) {
-        val halfHeight: Int = height / 2
-        val halfWidth: Int = width / 2
-
-        // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-        // height and width larger than the requested height and width.
-        while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-            inSampleSize *= 2
-        }
-    }
-
-    return inSampleSize
-}
-
-@Composable
-fun AsyncImage(
-        path: String,
-        contentDescription: String?,
-        modifier: Modifier = Modifier,
-        contentScale: ContentScale = ContentScale.Fit,
-        reqWidth: Int? = null,
-        reqHeight: Int? = null
-) {
-    val bitmapState =
-            produceState<Bitmap?>(initialValue = null, key1 = path) {
-                value = loadBitmapAsync(path, reqWidth, reqHeight)
-            }
-
-    if (bitmapState.value != null) {
-        androidx.compose.foundation.Image(
-                bitmap = bitmapState.value!!.asImageBitmap(),
-                contentDescription = contentDescription,
-                contentScale = contentScale,
-                modifier = modifier
-        )
-    } else {
-        Box(
-                modifier = modifier.background(Color.Gray.copy(alpha = 0.3f)),
-                contentAlignment = Alignment.Center
-        ) { CircularProgressIndicator(color = AccentGreen, modifier = Modifier.size(24.dp)) }
-    }
-}
-
-@Composable
-fun EventPreviewDialog(event: CameraEvent, onDismiss: () -> Unit, onImageClick: () -> Unit) {
-    AlertDialog(
-            onDismissRequest = onDismiss,
-            containerColor = CardBg,
-            title = {
-                Text(
-                        "Detail Anomali",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                )
-            },
-            text = {
-                Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Info
-                    Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text("G-Force", color = TextSecondary, fontSize = 12.sp)
-                            Text(
-                                    "${event.triggerMagnitude} G",
-                                    color = SpikeRed,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Waktu", color = TextSecondary, fontSize = 12.sp)
-                            Text(
-                                    SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                                            .format(Date(event.timestamp)),
-                                    color = TextPrimary,
-                                    fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Image Thumbnail
-                    val file = java.io.File(event.imagePath)
-                    if (file.exists()) {
-                        Box(modifier = Modifier.clickable { onImageClick() }) {
-                            AsyncImage(
-                                    path = event.imagePath,
-                                    contentDescription = "Anomaly Image",
-                                    modifier =
-                                            Modifier.size(200.dp)
-                                                    .background(
-                                                            Color.Black,
-                                                            RoundedCornerShape(8.dp)
-                                                    )
-                                                    .border(
-                                                            1.dp,
-                                                            Color.Gray,
-                                                            RoundedCornerShape(8.dp)
-                                                    ),
-                                    contentScale = ContentScale.Crop,
-                                    reqWidth = 400,
-                                    reqHeight = 400
-                            )
-                            // Magnifier Icon Overlay
-                            Icon(
-                                    Icons.Default.ZoomIn,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier =
-                                            Modifier.align(Alignment.BottomEnd)
-                                                    .padding(8.dp)
-                                                    .background(
-                                                            Color.Black.copy(alpha = 0.5f),
-                                                            CircleShape
-                                                    )
-                                                    .padding(4.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                                "(Klik gambar untuk memperbesar)",
-                                color = TextSecondary,
-                                fontSize = 10.sp
-                        )
-                    } else {
-                        Text("File gambar tidak ditemukan", color = SpikeRed)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = onDismiss) { Text("Tutup", color = AccentGreen) }
-            }
-    )
-}
-
-@Composable
-fun FullScreenImageDialog(event: CameraEvent, onDismiss: () -> Unit) {
-    Dialog(
-            onDismissRequest = onDismiss,
-            properties =
-                    DialogProperties(
-                            usePlatformDefaultWidth = false,
-                            decorFitsSystemWindows = false
-                    )
-    ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            val file = java.io.File(event.imagePath)
-            if (file.exists()) {
-                AsyncImage(
-                        path = event.imagePath,
-                        contentDescription = "Full Screen Image",
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            // Close Button
-            IconButton(
-                    onClick = onDismiss,
-                    modifier =
-                            Modifier.align(Alignment.TopEnd)
-                                    .padding(16.dp)
-                                    .statusBarsPadding()
-                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-            ) { Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White) }
-
-            // Info Overlay
-            Column(
-                    modifier =
-                            Modifier.align(Alignment.BottomStart)
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.5f))
-                                    .padding(16.dp)
-                                    .navigationBarsPadding()
-            ) {
-                Text(
-                        "G-Force: ${event.triggerMagnitude} G",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                )
-                Text(
-                        SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale.getDefault())
-                                .format(Date(event.timestamp)),
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 12.sp
-                )
-            }
-        }
-    }
-}

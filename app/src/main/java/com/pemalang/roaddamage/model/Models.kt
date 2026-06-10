@@ -23,7 +23,11 @@ data class SensorReading(
     val altitude: Double = Double.NaN,
     val speed: Float = Float.NaN,
     val accuracy: Float = Float.NaN,
-    val bearing: Float = Float.NaN
+    val bearing: Float = Float.NaN,
+    // Model Predictions (Forward-Filled)
+    var probNone: Float = 1.0f,
+    var probPothole: Float = 0.0f,
+    var probSpeedbump: Float = 0.0f
 )
 
 @Entity(tableName = "trips")

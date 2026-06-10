@@ -1,16 +1,56 @@
-*.iml
-.gradle
-.agents
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle files
+.gradle/
+build/
+/app/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration file (sdk path, etc)
 local.properties
+
+# IntelliJ/Android Studio
+*.iml
+.idea/
+!.idea/vcs.xml
+!.idea/runConfigurations.xml
+!.idea/codeStyles/
+!.idea/dictionaries/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Log Files
+*.log
+hs_err_pid*.log
+
+# Keystore files
+*.jks
+*.keystore
+
+# External native build folder generated in Android Studio 2.2 and later
+.externalNativeBuild/
+.cxx/
+
+# Kotlin
+.kotlin/
+
+# NPM / Node
+node_modules/
+package-lock.json
+
+# Trae/AI Agents
+.agents/
+skills-lock.json
+
+# Firebase / Google Services
+google-services.json
+app/google-services.json

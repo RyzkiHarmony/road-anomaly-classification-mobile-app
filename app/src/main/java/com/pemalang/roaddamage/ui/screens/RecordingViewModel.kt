@@ -39,7 +39,8 @@ constructor(
     val recording: StateFlow<Boolean> = repo.recordingFlow
     val startTime: StateFlow<Long> = repo.startTimeFlow
     val eventCount: StateFlow<Int> = repo.eventCountFlow
-    val cameraTrigger: kotlinx.coroutines.flow.SharedFlow<Float> = repo.cameraTrigger
+    val anomalyProbabilities: StateFlow<FloatArray> = repo.anomalyProbabilities
+    
     private val _gpsActive = MutableStateFlow(false)
     val gpsActive: StateFlow<Boolean> = _gpsActive
     private val _isGpsEnabled = MutableStateFlow(false)
@@ -63,10 +64,6 @@ constructor(
             repo.currentSpeedFlow
                     .map { (it * 3.6f).coerceAtLeast(0f) }
                     .stateIn(viewModelScope, SharingStarted.Lazily, 0f)
-
-    fun saveCameraEvent(path: String, magnitude: Float) {
-        viewModelScope.launch { repo.saveCameraEvent(path, magnitude) }
-    }
 
     // Helper for fast FloatArray concatenation and truncation
     private fun appendWithLimit(current: FloatArray, newItems: FloatArray, limit: Int = 200): FloatArray {

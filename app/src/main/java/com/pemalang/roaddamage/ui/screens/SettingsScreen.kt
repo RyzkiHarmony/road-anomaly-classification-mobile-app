@@ -144,8 +144,9 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 onValueChangeFinished = {
                                                         vm.setSampling(sliderHz.toInt())
                                                 },
-                                                valueRange = 10f..100f,
-                                                steps = 9, // (100-10)/10 - 1 = 8 steps for 10Hz
+                                                valueRange = 100f..100f,
+                                                steps = 0,
+                                                enabled = false, // DISABLED: Changing this breaks the ML Pipeline (Butterworth Filter & ONNX Tensor size)
                                                 // increments roughly
                                                 colors =
                                                         SliderDefaults.colors(
