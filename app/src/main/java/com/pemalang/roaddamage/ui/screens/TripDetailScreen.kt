@@ -68,8 +68,6 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     val showDeleteDialog = remember { mutableStateOf(false) }
     val ctx = LocalContext.current
 
-    // State for image viewing
-    
     LaunchedEffect(tripId) {
         vm.load(tripId)
     }

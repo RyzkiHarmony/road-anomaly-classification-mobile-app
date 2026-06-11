@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import android.util.Log
 
 @AndroidEntryPoint
 class RecordingService : Service() {
@@ -80,6 +81,7 @@ class RecordingService : Service() {
     private var latestGravity: FloatArray = floatArrayOf(Float.NaN, Float.NaN, Float.NaN)
 
     companion object {
+        private const val TAG = "RecordingService"
         const val CHANNEL_ID = "rdd_recording"
         const val NOTIF_ID = 1001
         const val ACTION_START = "com.pemalang.roaddamage.START"
@@ -163,22 +165,18 @@ class RecordingService : Service() {
         val samplingHz = runBlocking { userPrefs.getSamplingRateHz() }
         val samplingUs = (1_000_000 / samplingHz).coerceAtLeast(5_000)
         val gpsInterval = runBlocking { userPrefs.getGpsIntervalSec() }
-        // Ensure threshold is at least 1.4G to prevent triggering on engine vibration (1.0G +
-        // noise)
-        val threshold = runBlocking { userPrefs.getSensitivityThreshold() }.coerceAtLeast(1.4f)
-        
         try {
             accel = AccelerometerHandler(sManager, samplingUs)
             gyro = GyroscopeHandler(sManager, samplingUs)
             linearAccel = LinearAccelerationHandler(sManager, samplingUs)
             gravity = GravityHandler(sManager, samplingUs)
             gps = GPSHandler(application, gpsInterval.toLong())
-            
-            onnxRunner = OnnxModelRunner(this)
-            onnxRunner?.initialize()
             fusionProcessor = SensorFusionProcessor()
         } catch (e: Exception) {
+            Log.e(TAG, "FATAL: Failed to initialize Sensors", e)
             FirebaseCrashlytics.getInstance().recordException(e)
+            stopSelf()
+            return
         }
 
         scope = CoroutineScope(Dispatchers.Default)
@@ -186,6 +184,26 @@ class RecordingService : Service() {
 
         collectingJob =
                 sc.launch {
+                    try {
+                        // Load ONNX Model on Background Thread to prevent Main Thread blocking (ANR)
+                        onnxRunner = OnnxModelRunner(this@RecordingService)
+                        onnxRunner?.initialize()
+                        Log.d(TAG, "ONNX + Fusion initialized. onnxRunner=$onnxRunner, fusionProcessor=$fusionProcessor")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "FATAL: Failed to initialize ONNX Model", e)
+                        FirebaseCrashlytics.getInstance().recordException(e)
+                        
+                        // Notify user and gracefully shut down service
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            android.widget.Toast.makeText(
+                                this@RecordingService, 
+                                "Gagal memuat AI Model: ${e.message}", 
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                        }
+                        stopSelf()
+                        return@launch
+                    }
                     try {
                         val userId = userPrefs.getOrCreateUserId()
                         repository.startTrip(userId)
@@ -252,16 +270,19 @@ class RecordingService : Service() {
                 
         // Listen to ONNX Inference Triggers
         scope?.launch {
+            Log.d(TAG, "Starting inferenceTrigger collector...")
             fusionProcessor?.inferenceTrigger?.collect { tensorData ->
+                Log.d(TAG, "<<< Received inference trigger (${tensorData.size} floats)")
                 try {
                     val probs = onnxRunner?.predict(tensorData)
                     if (probs != null) {
+                        Log.d(TAG, "<<< ONNX Result: None=${probs[0]}, Pothole=${probs[1]}, SpeedBump=${probs[2]}")
                         repository.updateAnomalyProbabilities(probs)
                         
                         // probs: [0]=Non-Event, [1]=Pothole, [2]=SpeedBump
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
-                        if (potholeProb > 0.51f || speedBumpProb > 0.51f) {
+                        if (potholeProb > 0.57f || speedBumpProb > 0.57f) {
                             val now = System.currentTimeMillis()
                             if (now - lastTriggerTime > COOLDOWN_MS) {
                                 lastTriggerTime = now
@@ -275,14 +296,36 @@ class RecordingService : Service() {
                             }
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     FirebaseCrashlytics.getInstance().recordException(e)
+                    // Log to local file for debugging
+                    try {
+                        val logFile = java.io.File(getExternalFilesDir(null), "onnx_error.txt")
+                        logFile.appendText("Error: ${e.message}\n${android.util.Log.getStackTraceString(e)}\n\n")
+                    } catch (ioe: Exception) {
+                        // ignore
+                    }
                 }
             }
         }
 
+        // Software Throttle to enforce exactly `samplingHz`
+        val targetDelayMs = 1000L / samplingHz
+        var lastAcceptedTime = 0L
+
         scope?.launch {
             accel?.readings?.collect { arr ->
+                val eventTimeMs = arr[3].toLong()
+                
+                // First sample ever
+                if (lastAcceptedTime == 0L) {
+                    lastAcceptedTime = eventTimeMs
+                } else if (eventTimeMs - lastAcceptedTime < targetDelayMs) {
+                    return@collect // Skip sample to maintain exact hardware target Hz
+                } else {
+                    lastAcceptedTime = eventTimeMs
+                }
+
                 val x = arr[0]
                 val y = arr[1]
                 val z = arr[2]
@@ -340,11 +383,15 @@ class RecordingService : Service() {
                         )
 
                 // Update Sensor Fusion Processor
-                fusionProcessor?.updateGravity(grx, gry, grz)
+                if (!grx.isNaN() && !gry.isNaN() && !grz.isNaN()) {
+                    fusionProcessor?.updateGravity(grx, gry, grz)
+                }
                 if (!spd.isNaN()) {
                     fusionProcessor?.updateSpeed(spd)
                 }
-                fusionProcessor?.processLinearAcceleration(lax, lay, laz)
+                if (!lax.isNaN() && !lay.isNaN() && !laz.isNaN()) {
+                    fusionProcessor?.processLinearAcceleration(lax, lay, laz)
+                }
 
                 repository.appendReading(reading)
             }

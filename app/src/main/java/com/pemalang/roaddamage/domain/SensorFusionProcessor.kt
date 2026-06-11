@@ -1,5 +1,6 @@
 package com.pemalang.roaddamage.domain
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlin.math.max
@@ -13,6 +14,7 @@ import kotlin.math.sqrt
 class SensorFusionProcessor {
 
     companion object {
+        private const val TAG = "SensorFusion"
         const val WINDOW_SIZE = 200
         const val STRIDE = 50 // inferensi setiap 0.5 detik
     }
@@ -31,20 +33,34 @@ class SensorFusionProcessor {
     private val filterHorizontal = ButterworthFilter()
 
     // Flow untuk mengirim data yang sudah matang ke OnnxModelRunner
-    private val _inferenceTrigger = MutableSharedFlow<FloatArray>(extraBufferCapacity = 1)
+    private val _inferenceTrigger = MutableSharedFlow<FloatArray>(
+        extraBufferCapacity = 10,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
     val inferenceTrigger = _inferenceTrigger.asSharedFlow()
 
     fun updateGravity(gx: Float, gy: Float, gz: Float) {
         lastGravity[0] = gx
         lastGravity[1] = gy
         lastGravity[2] = gz
+        // Log hanya sekali setiap 200 sample agar tidak spam
+        if (bufferIndex == 1) {
+            Log.d(TAG, "Gravity updated: [$gx, $gy, $gz]")
+        }
     }
 
     fun updateSpeed(speed: Float) {
+        if (speed != lastSpeed) {
+            Log.d(TAG, "Speed updated: $speed m/s")
+        }
         lastSpeed = speed
     }
 
     fun processLinearAcceleration(linAx: Float, linAy: Float, linAz: Float) {
+        // Log setiap 50 sample agar tidak terlalu spam
+        if (bufferIndex % 50 == 0 || samplesSinceLastInference % 50 == 0) {
+            Log.d(TAG, "processLinAccel called | bufferIdx=$bufferIndex | samplesSinceInf=$samplesSinceLastInference | speed=$lastSpeed")
+        }
         val (gx, gy, gz) = lastGravity
         
         // 1. Normalize Gravity
@@ -96,7 +112,12 @@ class SensorFusionProcessor {
             System.arraycopy(buffer[1], 0, tensorData, WINDOW_SIZE, WINDOW_SIZE)
             System.arraycopy(buffer[2], 0, tensorData, 2 * WINDOW_SIZE, WINDOW_SIZE)
             
-            _inferenceTrigger.tryEmit(tensorData)
+            // Log sample values sebelum emit
+            Log.d(TAG, ">>> TRIGGER INFERENCE | aVert[0..2]=[${buffer[0][0]}, ${buffer[0][1]}, ${buffer[0][2]}] | speed[0]=${buffer[2][0]}")
+            
+            // Trigger Inference
+            val emitted = _inferenceTrigger.tryEmit(tensorData)
+            Log.d(TAG, ">>> tryEmit result: $emitted (subscribers=${_inferenceTrigger.subscriptionCount.value})")
         }
     }
 }

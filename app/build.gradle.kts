@@ -87,10 +87,13 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.18")
     
     // ONNX Runtime
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.1")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 

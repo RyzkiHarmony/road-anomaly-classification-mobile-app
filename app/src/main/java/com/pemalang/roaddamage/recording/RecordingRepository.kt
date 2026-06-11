@@ -76,7 +76,8 @@ constructor(
     val anomalyProbabilities: StateFlow<FloatArray> = _anomalyProbabilities
 
     // IO Optimization: Buffer for writing to file
-    private val readingBuffer = ArrayList<SensorReading>(60)
+    private var readingBuffer = ArrayList<SensorReading>(60)
+    private var writeBuffer = ArrayList<SensorReading>(60)
     private val BATCH_SIZE = 50
     private val bufferMutex = Mutex()
 
@@ -187,17 +188,16 @@ constructor(
     }
 
     private suspend fun flushBufferSuspend() {
-        val chunk =
-                bufferMutex.withLock {
-                    val c = ArrayList(readingBuffer)
-                    readingBuffer.clear()
-                    c
-                }
-        if (chunk.isNotEmpty()) {
+        bufferMutex.withLock {
+            val temp = writeBuffer
+            writeBuffer = readingBuffer
+            readingBuffer = temp
+        }
+        if (writeBuffer.isNotEmpty()) {
             withContext(Dispatchers.IO) {
                 writer?.apply {
                     val sb = StringBuilder()
-                    for (reading in chunk) {
+                    for (reading in writeBuffer) {
                         sb.setLength(0)
                         sb.append(reading.timestamp).append(",")
                           .append(reading.accelX).append(",")
@@ -222,6 +222,7 @@ constructor(
                     }
                 }
             }
+            writeBuffer.clear()
         }
     }
 }
