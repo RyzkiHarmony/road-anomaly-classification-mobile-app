@@ -49,7 +49,7 @@ class GyroscopeHandler(
         // Best Practice: Use maxReportLatencyUs to enable hardware FIFO batching.
         // This allows the Application Processor to sleep while sensor collects data,
         // which is critical for motorcycle use where the phone stays on for long rides.
-        val maxReportLatencyUs = 1_000_000 // 1 second
+        val maxReportLatencyUs = 0
         sensorManager.registerListener(this, s, samplingDelayUs, maxReportLatencyUs)
     }
 
@@ -62,7 +62,7 @@ class GyroscopeHandler(
         samplingDelayUs = newDelayUs
         val s = sensor ?: return
         sensorManager.unregisterListener(this)
-        val maxReportLatencyUs = 1_000_000
+        val maxReportLatencyUs = 0
         sensorManager.registerListener(this, s, samplingDelayUs, maxReportLatencyUs)
     }
 

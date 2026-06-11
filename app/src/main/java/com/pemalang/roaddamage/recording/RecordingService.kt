@@ -163,7 +163,9 @@ class RecordingService : Service() {
 
         val sManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val samplingHz = runBlocking { userPrefs.getSamplingRateHz() }
-        val samplingUs = (1_000_000 / samplingHz).coerceAtLeast(5_000)
+        // Request 200Hz (5000us) from hardware to prevent hardware bottlenecks, 
+        // our software throttle will cleanly downsample this to exactly 100Hz.
+        val samplingUs = 5000
         val gpsInterval = runBlocking { userPrefs.getGpsIntervalSec() }
         try {
             accel = AccelerometerHandler(sManager, samplingUs)
@@ -315,15 +317,16 @@ class RecordingService : Service() {
 
         scope?.launch {
             accel?.readings?.collect { arr ->
-                val eventTimeMs = arr[3].toLong()
-                
-                // First sample ever
+                val now = System.currentTimeMillis()
                 if (lastAcceptedTime == 0L) {
-                    lastAcceptedTime = eventTimeMs
-                } else if (eventTimeMs - lastAcceptedTime < targetDelayMs) {
-                    return@collect // Skip sample to maintain exact hardware target Hz
+                    lastAcceptedTime = now
+                } else if (now - lastAcceptedTime < targetDelayMs - 3) {
+                    return@collect // Skip sample to maintain exactly target Hz
                 } else {
-                    lastAcceptedTime = eventTimeMs
+                    lastAcceptedTime += targetDelayMs
+                    if (now - lastAcceptedTime > targetDelayMs) {
+                        lastAcceptedTime = now // Catch up if there was a large system lag
+                    }
                 }
 
                 val x = arr[0]

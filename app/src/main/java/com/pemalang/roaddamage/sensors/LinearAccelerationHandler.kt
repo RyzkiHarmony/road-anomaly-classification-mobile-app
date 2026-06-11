@@ -23,7 +23,16 @@ class LinearAccelerationHandler(
     fun start() {
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
         val s = sensor ?: return
-        val maxReportLatencyUs = 1_000_000 // 1 second
+        val maxReportLatencyUs = 0
+        sensorManager.registerListener(this, s, samplingDelayUs, maxReportLatencyUs)
+    }
+
+    fun updateDelay(newDelayUs: Int) {
+        if (newDelayUs == samplingDelayUs) return
+        samplingDelayUs = newDelayUs
+        val s = sensor ?: return
+        sensorManager.unregisterListener(this)
+        val maxReportLatencyUs = 0
         sensorManager.registerListener(this, s, samplingDelayUs, maxReportLatencyUs)
     }
 

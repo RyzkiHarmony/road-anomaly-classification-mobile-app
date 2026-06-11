@@ -19,12 +19,22 @@ class GravityHandler(
     )
 
     private var sensor: Sensor? = null
+    private var currentDelay = samplingDelayUs
 
     fun start() {
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
         val s = sensor ?: return
-        val maxReportLatencyUs = 1_000_000 // 1 second
-        sensorManager.registerListener(this, s, samplingDelayUs, maxReportLatencyUs)
+        val maxReportLatencyUs = 0
+        sensorManager.registerListener(this, s, currentDelay, maxReportLatencyUs)
+    }
+
+    fun updateDelay(newDelayUs: Int) {
+        if (newDelayUs == currentDelay) return
+        currentDelay = newDelayUs
+        val s = sensor ?: return
+        sensorManager.unregisterListener(this)
+        val maxReportLatencyUs = 0
+        sensorManager.registerListener(this, s, currentDelay, maxReportLatencyUs)
     }
 
     fun stop() {
