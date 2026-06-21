@@ -66,7 +66,6 @@ fun DashboardScreen(
     accelX: Float,
     accelY: Float,
     samplingRate: Int,
-    sensitivity: Float,
     eventCount: Int,
     userName: String,
     pendingUploads: Int,

@@ -33,7 +33,6 @@ import com.pemalang.roaddamage.sensors.GravityHandler
 import com.pemalang.roaddamage.work.TripUploadWorker
 import com.pemalang.roaddamage.domain.OnnxModelRunner
 import com.pemalang.roaddamage.domain.SensorFusionProcessor
-import com.pemalang.roaddamage.domain.usecase.EvaluateRoadAnomalyUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -52,7 +51,6 @@ class RecordingService : Service() {
 
     @Inject lateinit var userPrefs: UserPrefs
     @Inject lateinit var repository: RecordingRepository
-    @Inject lateinit var evaluateAnomaly: EvaluateRoadAnomalyUseCase
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var scope: CoroutineScope? = null

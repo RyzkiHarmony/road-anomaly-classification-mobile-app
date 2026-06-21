@@ -26,7 +26,6 @@ constructor(private val app: Application, private val store: DataStore<Preferenc
     private val userNameKey = stringPreferencesKey("user_name")
     private val userEmailKey = stringPreferencesKey("user_email")
     private val vehicleTypeKey = stringPreferencesKey("vehicle_type")
-    private val sensitivityKey = floatPreferencesKey("sensitivity_threshold")
 
     val samplingRateFlow: Flow<Int> = store.data.map { prefs -> prefs[samplingHzKey] ?: 100 }
 
@@ -91,13 +90,5 @@ constructor(private val app: Application, private val store: DataStore<Preferenc
         }
     }
 
-    val sensitivityFlow: Flow<Float> = store.data.map { prefs -> prefs[sensitivityKey] ?: 2.0f }
 
-    suspend fun getSensitivityThreshold(): Float {
-        val prefs = store.data.first()
-        return prefs[sensitivityKey] ?: 2.0f
-    }
-    suspend fun setSensitivityThreshold(value: Float) {
-        store.edit { it[sensitivityKey] = value }
-    }
 }

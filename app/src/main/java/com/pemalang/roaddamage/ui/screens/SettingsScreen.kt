@@ -51,8 +51,6 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
         // Temporary local state for sliders
         var sliderHz by remember(ui.samplingHz) { mutableStateOf(ui.samplingHz.toFloat()) }
         var sliderGps by remember(ui.gpsIntervalSec) { mutableStateOf(ui.gpsIntervalSec.toFloat()) }
-        var sliderSensitivity by
-                remember(ui.sensitivityThreshold) { mutableStateOf(ui.sensitivityThreshold) }
 
         // Edit Profile Dialog State
         var showEditProfile by remember { mutableStateOf(false) }
@@ -195,107 +193,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                         }
                                 }
 
-                                // Sensitivity Threshold / Camera Trigger
-                                ParameterCard(
-                                        title = "Trigger Kamera (G-Force)",
-                                        subtitle = "Minimal guncangan untuk ambil foto",
-                                        value = String.format("%.1f G", sliderSensitivity)
-                                ) {
-                                        // Slider
-                                        Slider(
-                                                value = sliderSensitivity,
-                                                onValueChange = { sliderSensitivity = it },
-                                                onValueChangeFinished = {
-                                                        vm.setSensitivity(sliderSensitivity)
-                                                },
-                                                valueRange = 1.4f..20.0f,
-                                                steps = 186, // (20.0 - 1.4) / 0.1 ~= 186 steps
-                                                colors =
-                                                        SliderDefaults.colors(
-                                                                thumbColor = AccentGreen,
-                                                                activeTrackColor = AccentGreen,
-                                                                inactiveTrackColor = CardBg
-                                                        )
-                                        )
 
-                                        // Manual Input Column
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                                Text(
-                                                        "Min: 1.4G",
-                                                        color = TextSecondary,
-                                                        fontSize = 10.sp
-                                                )
-
-                                                // Local state for text input to allow intermediate values
-                                                var textValue by remember { mutableStateOf(String.format(java.util.Locale.US, "%.1f", sliderSensitivity)) }
-
-                                                // Sync textValue when sliderSensitivity changes externally
-                                                LaunchedEffect(sliderSensitivity) {
-                                                    val parsed = textValue.toFloatOrNull()
-                                                    if (parsed == null || kotlin.math.abs(parsed - sliderSensitivity) > 0.05f) {
-                                                        textValue = String.format(java.util.Locale.US, "%.1f", sliderSensitivity)
-                                                    }
-                                                }
-
-                                                // Input Field
-                                                androidx.compose.material3.OutlinedTextField(
-                                                        value = textValue,
-                                                        onValueChange = { str ->
-                                                                textValue = str
-                                                                val num = str.toFloatOrNull()
-                                                                if (num != null && num in 1.4f..20.0f) {
-                                                                        sliderSensitivity = num
-                                                                        vm.setSensitivity(num)
-                                                                }
-                                                        },
-                                                        label = {
-                                                                Text("Input G", fontSize = 10.sp)
-                                                        },
-                                                        singleLine = true,
-                                                        keyboardOptions =
-                                                                androidx.compose.foundation.text
-                                                                        .KeyboardOptions(
-                                                                                keyboardType =
-                                                                                        androidx.compose
-                                                                                                .ui
-                                                                                                .text
-                                                                                                .input
-                                                                                                .KeyboardType
-                                                                                                .Decimal
-                                                                        ),
-                                                        modifier =
-                                                                Modifier.width(80.dp).height(56.dp),
-                                                        textStyle =
-                                                                androidx.compose.ui.text.TextStyle(
-                                                                        fontSize = 12.sp,
-                                                                        color = TextPrimary
-                                                                ),
-                                                        colors =
-                                                                androidx.compose.material3
-                                                                        .OutlinedTextFieldDefaults
-                                                                        .colors(
-                                                                                focusedBorderColor =
-                                                                                        AccentGreen,
-                                                                                unfocusedBorderColor =
-                                                                                        TextSecondary,
-                                                                                focusedLabelColor =
-                                                                                        AccentGreen,
-                                                                                unfocusedLabelColor =
-                                                                                        TextSecondary
-                                                                        )
-                                                )
-
-                                                Text(
-                                                        "Max: 20G",
-                                                        color = TextSecondary,
-                                                        fontSize = 10.sp
-                                                )
-                                        }
-                                }
                         }
 
                         // Data Management Section

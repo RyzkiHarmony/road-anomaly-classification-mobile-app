@@ -53,7 +53,6 @@ private val TextSecondary = md_theme_TextSecondary
 /**
  * Top-level screen that orchestrates:
  *  – permission requests & dialogs (via [PermissionRationaleDialog] etc.)
- *  – CameraX image-capture lifecycle
  *  – delegation to [DashboardScreen] (idle) or [ActiveSessionScreen] (recording)
  *
  * After refactoring this file shrunk from ~1 200 → ~250 lines.
@@ -79,7 +78,6 @@ fun HomeScreen(
     val totalTrips by vm.totalTrips.collectAsState()
     val totalDistance by vm.totalDistance.collectAsState()
     val samplingRate by vm.samplingRate.collectAsState()
-    val sensitivity by vm.sensitivityThreshold.collectAsState()
     val eventCount by vm.eventCount.collectAsState()
     val currentSpeedKmh by vm.currentSpeedKmh.collectAsState()
     val userName by vm.userName.collectAsState()
@@ -186,7 +184,6 @@ fun HomeScreen(
             accelX = ax.lastOrNull() ?: 0f,
             accelY = ay.lastOrNull() ?: 0f,
             samplingRate = samplingRate,
-            sensitivity = sensitivity,
             eventCount = eventCount,
             userName = userName,
             pendingUploads = pendingUploads,

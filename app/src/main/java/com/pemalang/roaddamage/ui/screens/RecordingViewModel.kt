@@ -54,8 +54,6 @@ constructor(
             tripDao.observeTotalDistance().stateIn(viewModelScope, SharingStarted.Lazily, 0f)
     val samplingRate: StateFlow<Int> =
             prefs.samplingRateFlow.stateIn(viewModelScope, SharingStarted.Lazily, 50)
-    val sensitivityThreshold: StateFlow<Float> =
-            prefs.sensitivityFlow.stateIn(viewModelScope, SharingStarted.Lazily, 2.0f)
     val userName: StateFlow<String> =
             kotlinx.coroutines.flow.flow {
                 emit(prefs.getUserName() ?: "Pengguna")

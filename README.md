@@ -7,13 +7,14 @@
 - **Dashboard Modern & Intuitif**:
   - Antarmuka berbasis Material Design 3 dengan Jetpack Compose.
   - Ringkasan statistik *real-time*: Total Perjalanan, Total Jarak, Status GPS, Status Sensor, dan antrean *Upload Tertunda*.
+- **Real-time On-Device Inference (1D-CNN)**:
+  - Deteksi anomali jalan (Lubang / *Pothole* dan Polisi Tidur / *Speed Bump*) secara lokal (*Edge AI*) menggunakan model 1D-CNN.
+  - Model inferensi dieksekusi secara *real-time* via **ONNX Runtime Android** dengan latensi sangat rendah.
+  - Integrasi sensor fusion dinamis di perangkat sebelum data diumpankan ke model.
 - **High-Frequency Sensor Logging**:
   - Merekam data **Accelerometer** (X, Y, Z) dan **Gyroscope** (X, Y, Z) secara bersamaan.
-  - Menghitung **G-Force** / Magnitudo Total secara otomatis.
+  - Menghitung **G-Force* / Magnitudo Total secara otomatis.
   - Frekuensi *sampling* (Hz) dan *Sensitivity Threshold* (G-Force) yang dapat disesuaikan.
-- **Smart Camera Trigger (CameraX)**:
-  - Mengambil foto kondisi jalan secara otomatis (berjalan di *background* tanpa mengganggu UI) ketika guncangan melewati ambang batas (*threshold*) yang ditentukan.
-  - Mekanisme *cooldown* cerdas untuk mencegah pengambilan foto berlebihan pada area jalan rusak yang panjang.
 - **GPS & Geospatial Mapping**: 
   - Sinkronisasi getaran dengan koordinat Latitude, Longitude, Altitude, Kecepatan, Akurasi, dan Bearing.
   - Visualisasi rute perjalanan menggunakan peta *offline-ready* (**Osmdroid**).
@@ -34,6 +35,7 @@
 - **UI Toolkit**: [Jetpack Compose](https://developer.android.com/jetpack/compose) (Material Design 3)
 - **Architecture**: MVVM + Clean Architecture Concepts
 - **Dependency Injection**: [Hilt](https://dagger.dev/hilt/)
+- **Machine Learning Inference**: [ONNX Runtime Android](https://onnxruntime.ai/) (Eksekusi lokal model 1D-CNN)
 - **Camera**: [CameraX](https://developer.android.com/training/camerax) (ImageCapture headless)
 - **Maps**: [Osmdroid](https://github.com/osmdroid/osmdroid)
 - **Asynchronous**: Coroutines & StateFlow
@@ -50,7 +52,7 @@
 com.pemalang.roaddamage
 ├── data           # Akses Data (Room DAO, DataStore, Retrofit API)
 ├── di             # Hilt Dependency Injection Modules
-├── domain         # Use Case Layer (Logika deteksi anomali G-Force)
+├── domain         # Use Case Layer (Sensor fusion processor, OnnxModelRunner, dan logika keputusan)
 ├── model          # Data Classes (Trip, SensorReading, CameraEvent)
 ├── recording      # Service & Repository utama (Lifecycle perekaman)
 ├── sensors        # Handler Hardware (Accelerometer, Gyroscope, GPS)

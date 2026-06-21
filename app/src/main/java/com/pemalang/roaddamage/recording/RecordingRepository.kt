@@ -55,12 +55,6 @@ constructor(
     private val _gpsLastTs = MutableStateFlow(0L)
     private val _gpsAccuracy = MutableStateFlow<Float?>(null)
     private val _currentSpeed = MutableStateFlow(0f)
-    private val _cameraTrigger =
-            MutableSharedFlow<Float>(
-                    replay = 0,
-                    extraBufferCapacity = 8,
-                    onBufferOverflow = BufferOverflow.DROP_OLDEST
-            )
     private val _anomalyProbabilities = MutableStateFlow(floatArrayOf(1f, 0f, 0f)) // Non-Event, Pothole, Speed Bump
     
     val readingsFlow: MutableSharedFlow<SensorReading> = _readings
@@ -72,7 +66,6 @@ constructor(
     val gpsLastTs: StateFlow<Long> = _gpsLastTs
     val gpsAccuracyFlow: StateFlow<Float?> = _gpsAccuracy
     val currentSpeedFlow: StateFlow<Float> = _currentSpeed
-    val cameraTrigger: MutableSharedFlow<Float> = _cameraTrigger
     val anomalyProbabilities: StateFlow<FloatArray> = _anomalyProbabilities
 
     // IO Optimization: Buffer for writing to file

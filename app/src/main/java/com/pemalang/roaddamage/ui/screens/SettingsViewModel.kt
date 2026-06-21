@@ -26,8 +26,7 @@ class SettingsViewModel @Inject constructor(
         val userId: String = "",
         val userName: String = "",
         val userEmail: String = "",
-        val vehicleType: String = "",
-        val sensitivityThreshold: Float = 2.0f
+        val vehicleType: String = ""
     )
     private val _ui = MutableStateFlow(Ui())
     val ui: StateFlow<Ui> = _ui
@@ -41,7 +40,6 @@ class SettingsViewModel @Inject constructor(
             val name = prefs.getUserName() ?: ""
             val email = prefs.getUserEmail() ?: ""
             val vehicle = prefs.getVehicleType() ?: ""
-            val sensitivity = prefs.getSensitivityThreshold()
             _ui.value = Ui(
                 samplingHz = hz,
                 gpsIntervalSec = gps,
@@ -49,18 +47,11 @@ class SettingsViewModel @Inject constructor(
                 userId = id,
                 userName = name,
                 userEmail = email,
-                vehicleType = vehicle,
-                sensitivityThreshold = sensitivity
+                vehicleType = vehicle
             )
         }
     }
 
-    fun setSensitivity(value: Float) {
-        viewModelScope.launch {
-            prefs.setSensitivityThreshold(value)
-            _ui.value = _ui.value.copy(sensitivityThreshold = value)
-        }
-    }
 
     fun setSampling(hz: Int) {
         viewModelScope.launch {
