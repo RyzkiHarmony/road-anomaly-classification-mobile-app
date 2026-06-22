@@ -387,11 +387,14 @@ class RecordingService : Service() {
                 if (!grx.isNaN() && !gry.isNaN() && !grz.isNaN()) {
                     fusionProcessor?.updateGravity(grx, gry, grz)
                 }
+                if (!gx.isNaN() && !gy.isNaN() && !gz.isNaN()) {
+                    fusionProcessor?.updateGyro(gx, gy, gz)
+                }
                 if (!spd.isNaN()) {
                     fusionProcessor?.updateSpeed(spd)
                 }
                 if (!lax.isNaN() && !lay.isNaN() && !laz.isNaN()) {
-                    fusionProcessor?.processLinearAcceleration(lax, lay, laz)
+                    fusionProcessor?.processLinearAcceleration(lax, lay, laz, System.currentTimeMillis())
                 }
 
                 repository.appendReading(reading)

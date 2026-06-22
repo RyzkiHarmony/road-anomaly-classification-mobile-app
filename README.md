@@ -1,6 +1,6 @@
-# Road Damage Detector - Sensor & Camera Logger 🚗📉📸
+# Road Damage Detector - Sensor Logger 🚗📉
 
-**Road Damage Detector** adalah aplikasi Android canggih untuk memantau, mencatat, dan menganalisis kondisi permukaan jalan. Aplikasi ini mengubah smartphone Anda menjadi alat telemetri presisi tinggi yang menggabungkan data **Accelerometer**, **Gyroscope**, **GPS**, dan **Kamera (Computer Vision Context)** untuk mendeteksi anomali jalan seperti lubang atau polisi tidur secara otomatis.
+**Road Damage Detector** adalah aplikasi Android canggih untuk memantau, mencatat, dan menganalisis kondisi permukaan jalan. Aplikasi ini mengubah smartphone Anda menjadi alat telemetri presisi tinggi yang menggabungkan data **Accelerometer**, **Gyroscope**, dan **GPS** untuk mendeteksi anomali jalan seperti lubang atau polisi tidur secara otomatis.
 
 ## 🌟 Fitur Utama
 
@@ -13,7 +13,7 @@
   - Integrasi sensor fusion dinamis di perangkat sebelum data diumpankan ke model.
 - **High-Frequency Sensor Logging**:
   - Merekam data **Accelerometer** (X, Y, Z) dan **Gyroscope** (X, Y, Z) secara bersamaan.
-  - Menghitung **G-Force* / Magnitudo Total secara otomatis.
+  - Menghitung *G-Force* / Magnitudo Total secara otomatis.
   - Frekuensi *sampling* (Hz) dan *Sensitivity Threshold* (G-Force) yang dapat disesuaikan.
 - **GPS & Geospatial Mapping**: 
   - Sinkronisasi getaran dengan koordinat Latitude, Longitude, Altitude, Kecepatan, Akurasi, dan Bearing.
@@ -23,11 +23,11 @@
 - **Data Export & Manajemen Riwayat**:
   - Menyimpan data dalam format **CSV** yang siap diolah (kompatibel dengan Python/Pandas/MATLAB).
   - Fitur *Backward Compatibility* untuk membaca format CSV versi lama dengan mulus.
-  - Ekspor perjalanan lengkap (File CSV, Metadata JSON, dan file Foto Anomali) ke folder *Downloads* perangkat Anda.
+  - Ekspor perjalanan lengkap (File CSV dan Metadata JSON) ke folder *Downloads* perangkat Anda.
 - **Background Service & Battery Optimization**:
   - Berjalan tangguh di latar belakang (*Foreground Service*) dengan manajemen *WakeLock* dinamis untuk efisiensi baterai.
 - **Auto-Sync & Cloud Upload**:
-  - Mengunggah data perjalanan (CSV) beserta foto-foto anomali (Multipart JPEG) ke server menggunakan **WorkManager** saat terhubung ke jaringan Wi-Fi (*Unmetered*).
+  - Mengunggah data perjalanan (CSV) beserta metadata JSON ke server menggunakan **WorkManager** saat terhubung ke jaringan Wi-Fi (*Unmetered*).
 
 ## 🛠️ Tech Stack & Library
 
@@ -36,15 +36,14 @@
 - **Architecture**: MVVM + Clean Architecture Concepts
 - **Dependency Injection**: [Hilt](https://dagger.dev/hilt/)
 - **Machine Learning Inference**: [ONNX Runtime Android](https://onnxruntime.ai/) (Eksekusi lokal model 1D-CNN)
-- **Camera**: [CameraX](https://developer.android.com/training/camerax) (ImageCapture headless)
 - **Maps**: [Osmdroid](https://github.com/osmdroid/osmdroid)
 - **Asynchronous**: Coroutines & StateFlow
 - **Local Storage**:
-  - [Room Database](https://developer.android.com/training/data-storage/room) (Metadata Trip & Event Kamera)
+  - [Room Database](https://developer.android.com/training/data-storage/room) (Metadata Trip & Anomaly Event)
   - DataStore Preferences (Pengaturan Pengguna)
-  - File System (Penyimpanan file CSV & JPEG)
+  - File System (Penyimpanan file CSV)
 - **Background Processing**: [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager) & Foreground Services
-- **Networking**: [Retrofit](https://square.github.io/retrofit/) + OkHttp (Multipart Uploads)
+- **Networking**: [Retrofit](https://square.github.io/retrofit/) + OkHttp (Multipart/JSON API Uploads)
 
 ## 📂 Struktur Project
 
@@ -53,7 +52,7 @@ com.pemalang.roaddamage
 ├── data           # Akses Data (Room DAO, DataStore, Retrofit API)
 ├── di             # Hilt Dependency Injection Modules
 ├── domain         # Use Case Layer (Sensor fusion processor, OnnxModelRunner, dan logika keputusan)
-├── model          # Data Classes (Trip, SensorReading, CameraEvent)
+├── model          # Data Classes (Trip, SensorReading, AnomalyEvent)
 ├── recording      # Service & Repository utama (Lifecycle perekaman)
 ├── sensors        # Handler Hardware (Accelerometer, Gyroscope, GPS)
 ├── ui             # Komponen UI Jetpack Compose
@@ -62,7 +61,7 @@ com.pemalang.roaddamage
 │   ├── screens    # Layar Utama (Dashboard, ActiveSession, TripDetail, dll)
 │   └── theme      # Konfigurasi Warna & Tipografi
 ├── util           # Utility (Kalkulasi Jarak)
-└── work           # Background Worker (Auto-Upload Multipart ke Server)
+└── work           # Background Worker (Auto-Upload ke Server)
 ```
 
 ## 🚀 Cara Menjalankan
@@ -75,14 +74,14 @@ com.pemalang.roaddamage
    - Disarankan menggunakan Android Studio Koala atau versi terbaru.
    - Tunggu proses *Gradle Sync* selesai.
 3. **Build & Run**
-   - **Wajib menggunakan perangkat Android fisik**. Emulator tidak dapat mensimulasikan sensor akselerometer, giroskop, dan sistem kamera fisik secara akurat.
-   - Izinkan akses Kamera, Lokasi (Presisi Tinggi), dan Notifikasi saat pertama kali membuka aplikasi.
+   - **Wajib menggunakan perangkat Android fisik**. Emulator tidak dapat mensimulasikan sensor akselerometer, giroskop, dan GPS fisik secara akurat.
+   - Izinkan akses Lokasi (Presisi Tinggi) dan Notifikasi saat pertama kali membuka aplikasi.
 
 ## 📝 Requirements
 
 - **Minimum SDK**: Android 7.0 (API Level 24)
 - **Target SDK**: Android 34 (API Level 34)
-- **Hardware**: Smartphone dengan sensor Akselerometer, Giroskop, GPS, dan Kamera Belakang.
+- **Hardware**: Smartphone dengan sensor Akselerometer, Giroskop, dan GPS.
 
 ## 📄 Lisensi
 

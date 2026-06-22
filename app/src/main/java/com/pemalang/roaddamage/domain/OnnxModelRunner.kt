@@ -41,8 +41,8 @@ class OnnxModelRunner(private val context: Context) {
         val env = ortEnvironment ?: throw IllegalStateException("ONNX Environment not initialized")
         val session = ortSession ?: throw IllegalStateException("ONNX Session not initialized")
 
-        // Bentuk input tensor: [Batch=1, Channels=3, Length=200]
-        val shape = longArrayOf(1, 3, 200)
+        // Bentuk input tensor: [Batch=1, Channels=10, Length=200]
+        val shape = longArrayOf(1, 10, 200)
         
         val byteBuffer = java.nio.ByteBuffer.allocateDirect(flatData.size * 4)
         byteBuffer.order(java.nio.ByteOrder.nativeOrder())

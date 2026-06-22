@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Represents a single anomaly detected by the ONNX model (e.g. Pothole or Speed Bump)
- * This is saved to SQLite for fast UI rendering on the Map, replacing the old CameraEvent.
+ * This is saved to SQLite for fast UI rendering on the Map.
  */
 @Entity(tableName = "anomaly_events")
 data class AnomalyEvent(
