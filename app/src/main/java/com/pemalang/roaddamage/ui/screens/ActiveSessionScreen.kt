@@ -144,13 +144,13 @@ fun ActiveSessionScreen(
             val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
 
             val bgColor = when {
-                probPothole >= 0.4820f -> Color(0xFFC62828) // Red
-                probSpeedBump >= 0.4925f -> Color(0xFFF9A825) // Yellow
+                probPothole >= 0.4861f -> Color(0xFFC62828) // Red
+                probSpeedBump >= 0.5364f -> Color(0xFFF9A825) // Yellow
                 else -> Color(0xFF2E7D32) // Green
             }
             val textLabel = when {
-                probPothole >= 0.4820f -> "LUBANG TERDETEKSI"
-                probSpeedBump >= 0.4925f -> "POLISI TIDUR"
+                probPothole >= 0.4861f -> "LUBANG TERDETEKSI"
+                probSpeedBump >= 0.5364f -> "POLISI TIDUR"
                 else -> "JALAN NORMAL"
             }
             val subText = "Pothole: ${String.format("%.1f%%", probPothole * 100)} | Bump: ${String.format("%.1f%%", probSpeedBump * 100)}"
