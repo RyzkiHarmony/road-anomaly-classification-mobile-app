@@ -282,7 +282,11 @@ class RecordingService : Service() {
                         // probs: [0]=Non-Event, [1]=Pothole, [2]=SpeedBump
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
-                        if (potholeProb > 0.57f || speedBumpProb > 0.57f) {
+                        
+                        val isPotholeDetected = potholeProb >= 0.4820f
+                        val isSpeedBumpDetected = speedBumpProb >= 0.4925f
+                        
+                        if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()
                             if (now - lastTriggerTime > COOLDOWN_MS) {
                                 lastTriggerTime = now
