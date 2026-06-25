@@ -283,8 +283,8 @@ class RecordingService : Service() {
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
                         
-                        val isPotholeDetected = potholeProb >= 0.4861f
-                        val isSpeedBumpDetected = speedBumpProb >= 0.5364f
+                        val isPotholeDetected = potholeProb >= 0.85f
+                        val isSpeedBumpDetected = speedBumpProb >= 0.85f
                         
                         if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()

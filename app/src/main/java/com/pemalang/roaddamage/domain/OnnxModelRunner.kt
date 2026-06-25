@@ -26,7 +26,7 @@ class OnnxModelRunner(private val context: Context) {
         
         val modelBytes = modelBytesOverride ?: run {
             val assetManager = context.assets
-            assetManager.open("model_1dcnn.onnx").readBytes()
+            assetManager.open("cnn_1d_model.onnx").readBytes()
         }
         
         val options = OrtSession.SessionOptions()

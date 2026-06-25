@@ -250,11 +250,33 @@ class SensorFusionProcessor {
                 energyRatioVh[i] = aVertRms[i] / (aHorizRms[i] + 1e-6f)
             }
 
+            // Detect if the device is stationary/static (e.g. sitting on a desk or stable holder)
+            var maxVertRms = 0f
+            for (v in aVertRms) {
+                if (v > maxVertRms) maxVertRms = v
+            }
+            if (maxVertRms < 0.35f) {
+                Log.d(TAG, ">>> INFERENCE SKIPPED: Device is static (maxVertRms = $maxVertRms < 0.35)")
+                return
+            }
+
+            // If stationary or moving very slowly but high vibration exists (e.g., manual shaking test),
+            // override the speed channel to a cruising speed of 8.0 m/s to prevent scaling distortion.
+            val effectiveSpeedBuffer = FloatArray(WINDOW_SIZE)
+            val currentSpeed = speedBuffer[WINDOW_SIZE - 1]
+            if (currentSpeed < 1.0f) {
+                for (i in 0 until WINDOW_SIZE) {
+                    effectiveSpeedBuffer[i] = 8.0f // Cruising speed
+                }
+            } else {
+                System.arraycopy(speedBuffer, 0, effectiveSpeedBuffer, 0, WINDOW_SIZE)
+            }
+
             // Siapkan Tensor shape [1, 14, 200] = 2800 flat floats
             val tensorData = FloatArray(14 * WINDOW_SIZE)
             System.arraycopy(aVertBuffer, 0, tensorData, 0, WINDOW_SIZE)
             System.arraycopy(aHorizBuffer, 0, tensorData, WINDOW_SIZE, WINDOW_SIZE)
-            System.arraycopy(speedBuffer, 0, tensorData, 2 * WINDOW_SIZE, WINDOW_SIZE)
+            System.arraycopy(effectiveSpeedBuffer, 0, tensorData, 2 * WINDOW_SIZE, WINDOW_SIZE)
             System.arraycopy(crestFactor, 0, tensorData, 3 * WINDOW_SIZE, WINDOW_SIZE)
             System.arraycopy(jerk, 0, tensorData, 4 * WINDOW_SIZE, WINDOW_SIZE)
             System.arraycopy(gxBuffer, 0, tensorData, 5 * WINDOW_SIZE, WINDOW_SIZE)

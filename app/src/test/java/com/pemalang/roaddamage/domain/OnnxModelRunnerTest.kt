@@ -31,9 +31,9 @@ class OnnxModelRunnerTest {
         val runner = OnnxModelRunner(context)
         
         // Read actual ONNX file from assets (so we run the real C++ execution)
-        var onnxFile = File("src/main/assets/model_1dcnn.onnx")
+        var onnxFile = File("src/main/assets/cnn_1d_model.onnx")
         if (!onnxFile.exists()) {
-            onnxFile = File("app/src/main/assets/model_1dcnn.onnx")
+            onnxFile = File("app/src/main/assets/cnn_1d_model.onnx")
         }
         assertTrue("ONNX file must exist in assets", onnxFile.exists())
         
