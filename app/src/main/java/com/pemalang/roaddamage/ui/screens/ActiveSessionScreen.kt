@@ -42,15 +42,19 @@ import com.pemalang.roaddamage.ui.components.LegendItem
 
 import com.pemalang.roaddamage.ui.theme.*
 
-// ── Design tokens ──
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
-private val GraphLineZ = md_theme_GraphZ
+// ── Design tokens (Friendly Road Detection) ──
+private val SurfaceBg = md_theme_Surface
+private val CardBg = md_theme_SurfaceContainerLowest
+private val Primary = md_theme_Primary
+private val PrimaryLight = md_theme_PrimaryFixed
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val SurfaceContainer = md_theme_SurfaceContainer
+private val OutlineVar = md_theme_OutlineVariant
+private val ErrorColor = md_theme_Error
 private val GraphLineX = md_theme_GraphX
 private val GraphLineY = md_theme_GraphY
+private val GraphLineZ = md_theme_GraphZ
 
 /**
  * Full-screen UI shown while a recording session is active.
@@ -71,7 +75,7 @@ fun ActiveSessionScreen(
     anomalyProbabilities: FloatArray
 ) {
     Scaffold(
-        containerColor = DarkBg,
+        containerColor = SurfaceBg,
         topBar = {
             Row(
                 modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp),
@@ -81,19 +85,19 @@ fun ActiveSessionScreen(
                 Icon(
                     Icons.Default.PlayArrow,
                     contentDescription = "Back",
-                    tint = TextPrimary,
+                    tint = OnSurface,
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
                     "ACTIVE SESSION",
-                    color = TextPrimary,
+                    color = OnSurface,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 Icon(
                     Icons.Default.Settings,
                     contentDescription = "Settings",
-                    tint = TextPrimary,
+                    tint = OnSurface,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -102,9 +106,9 @@ fun ActiveSessionScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             // ── Status Bar ──
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E2630)),
+                colors = CardDefaults.cardColors(containerColor = PrimaryLight.copy(alpha = 0.3f)),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Color(0xFF2C3E50)),
+                border = BorderStroke(1.dp, OutlineVar),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -112,45 +116,39 @@ fun ActiveSessionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier.size(10.dp).background(AccentGreen, CircleShape)
+                        modifier = Modifier.size(10.dp).background(Primary, CircleShape)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             "RECORDING ACTIVE",
-                            color = AccentGreen,
+                            color = Primary,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             if (gpsActive) "GPS Locked & Recording" else "Waiting for GPS...",
-                            color = Color(0xFF455A64),
+                            color = OnSurfaceVariant,
                             fontSize = 10.sp
                         )
                     }
-                    Button(
-                        onClick = {},
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C3240)),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) { Text("Hide", fontSize = 10.sp, color = TextPrimary) }
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Detection Dashboard ──
+            // ── Detection Dashboard (muted colors per DESIGN.md) ──
             val probPothole = anomalyProbabilities.getOrNull(1) ?: 0f
             val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
 
             val bgColor = when {
-                probPothole >= 0.85f -> Color(0xFFC62828) // Red
-                probSpeedBump >= 0.85f -> Color(0xFFF9A825) // Yellow
-                else -> Color(0xFF2E7D32) // Green
+                probPothole >= 0.75f -> md_theme_StatusRed
+                probSpeedBump >= 0.7f -> md_theme_StatusOrange
+                else -> md_theme_StatusGreen
             }
             val textLabel = when {
-                probPothole >= 0.85f -> "LUBANG TERDETEKSI"
-                probSpeedBump >= 0.85f -> "POLISI TIDUR"
+                probPothole >= 0.75f -> "LUBANG TERDETEKSI"
+                probSpeedBump >= 0.7f -> "POLISI TIDUR"
                 else -> "JALAN NORMAL"
             }
             val subText = "Pothole: ${String.format("%.1f%%", probPothole * 100)} | Bump: ${String.format("%.1f%%", probSpeedBump * 100)}"
@@ -166,7 +164,7 @@ fun ActiveSessionScreen(
                             textLabel,
                             color = Color.White,
                             fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold
+                            fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -193,12 +191,12 @@ fun ActiveSessionScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("ACCELEROMETER", color = TextSecondary, fontSize = 10.sp)
+                            Text("ACCELEROMETER", color = OnSurfaceVariant, fontSize = 10.sp)
                             Text(
                                 "%.2f G-Force".format((ay.lastOrNull() ?: 0f) / 9.80665f),
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                         Row {
@@ -215,7 +213,7 @@ fun ActiveSessionScreen(
                     Box(
                         modifier = Modifier.fillMaxWidth()
                             .weight(1f)
-                            .border(1.dp, Color(0xFF2C3240))
+                            .border(1.dp, OutlineVar, RoundedCornerShape(4.dp))
                     ) { Chart3Lines(ax, ay, az, Modifier.fillMaxSize()) }
                 }
             }
@@ -234,19 +232,19 @@ fun ActiveSessionScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("DURATION", color = TextSecondary, fontSize = 10.sp)
+                        Text("DURATION", color = OnSurfaceVariant, fontSize = 10.sp)
                         Text(
                             timerText,
-                            color = TextPrimary,
+                            color = OnSurface,
                             fontSize = 32.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                     Box(
                         modifier = Modifier.size(40.dp)
-                            .background(Color(0xFF2C3E50), CircleShape),
+                            .background(SurfaceContainer, CircleShape),
                         contentAlignment = Alignment.Center
-                    ) { Icon(Icons.Default.History, null, tint = AccentGreen) }
+                    ) { Icon(Icons.Default.History, null, tint = Primary) }
                 }
             }
 
@@ -263,24 +261,24 @@ fun ActiveSessionScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.PlayArrow, null,
-                                tint = AccentGreen,
+                                tint = Primary,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("DISTANCE", color = TextSecondary, fontSize = 10.sp)
+                            Text("DISTANCE", color = OnSurfaceVariant, fontSize = 10.sp)
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 "%.1f".format(distanceMeters / 1000f),
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 "km",
-                                color = TextSecondary,
+                                color = OnSurfaceVariant,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
@@ -297,24 +295,24 @@ fun ActiveSessionScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.PlayArrow, null,
-                                tint = AccentGreen,
+                                tint = Primary,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("SPEED", color = TextSecondary, fontSize = 10.sp)
+                            Text("SPEED", color = OnSurfaceVariant, fontSize = 10.sp)
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(
                                 "%.0f".format(currentSpeedKmh),
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 "km/h",
-                                color = TextSecondary,
+                                color = OnSurfaceVariant,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 4.dp)
                             )
@@ -325,10 +323,10 @@ fun ActiveSessionScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // ── Stop Button ──
+            // ── Stop Button — muted coral-red ──
             Button(
                 onClick = onStop,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828)),
+                colors = ButtonDefaults.buttonColors(containerColor = ErrorColor),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
@@ -337,7 +335,7 @@ fun ActiveSessionScreen(
                 Text(
                     "STOP RECORDING",
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }

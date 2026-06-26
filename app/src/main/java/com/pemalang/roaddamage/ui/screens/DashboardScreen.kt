@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Motorcycle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Route
@@ -42,19 +42,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pemalang.roaddamage.ui.components.BottomNavBar
 import com.pemalang.roaddamage.ui.components.NavDestination
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_StatusOrange
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.*
 
-// ── Design tokens ──
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val SurfaceBg = md_theme_Surface
+private val CardBg = md_theme_SurfaceContainerLowest  // white
+private val Primary = md_theme_Primary
+private val PrimaryLight = md_theme_PrimaryFixed
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val SurfaceContainer = md_theme_SurfaceContainer
+private val SurfaceContainerHigh = md_theme_SurfaceContainerHigh
+private val StatusOrange = md_theme_StatusOrange
+private val StatusGreen = md_theme_StatusGreen
 
 @Composable
 fun DashboardScreen(
@@ -72,7 +72,7 @@ fun DashboardScreen(
     isGpsEnabled: Boolean
 ) {
     Scaffold(
-        containerColor = DarkBg,
+        containerColor = SurfaceBg,
         bottomBar = {
             BottomNavBar(
                 selected = NavDestination.Home,
@@ -106,20 +106,20 @@ fun DashboardScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(AccentGreen.copy(alpha = 0.2f)),
+                            .background(PrimaryLight.copy(alpha = 0.4f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Route,
                             contentDescription = null,
-                            tint = AccentGreen,
+                            tint = Primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     Spacer(Modifier.width(16.dp))
                     Column {
-                        Text("Selamat Datang,", color = TextSecondary, fontSize = 14.sp)
-                        Text(userName, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Selamat Datang,", color = OnSurfaceVariant, fontSize = 14.sp)
+                        Text(userName, color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 
@@ -129,14 +129,14 @@ fun DashboardScreen(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(CardBg)
-                            .border(1.dp, TextSecondary.copy(alpha = 0.3f), CircleShape),
+                            .background(SurfaceContainer)
+                            .border(1.dp, md_theme_OutlineVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Default.Person,
                             contentDescription = "Profile",
-                            tint = AccentGreen,
+                            tint = Primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -147,8 +147,8 @@ fun DashboardScreen(
                             .align(Alignment.BottomEnd)
                             .offset(x = (-2).dp, y = (-2).dp)
                             .clip(CircleShape)
-                            .background(AccentGreen)
-                            .border(2.dp, DarkBg, CircleShape)
+                            .background(Primary)
+                            .border(2.dp, SurfaceBg, CircleShape)
                     )
                 }
             }
@@ -158,12 +158,12 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Siap Merekam?", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Text("Siap Merekam?", color = OnSurface, fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                Text("Pastikan ponsel terpasang stabil", color = TextSecondary, fontSize = 16.sp)
+                Text("Pastikan ponsel terpasang stabil", color = OnSurfaceVariant, fontSize = 16.sp)
             }
 
-            // ── Big Start Button ──
+            // ── Big Start Button — concentric sage-green rings ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -175,21 +175,21 @@ fun DashboardScreen(
                     modifier = Modifier
                         .size(240.dp)
                         .clip(CircleShape)
-                        .background(AccentGreen.copy(alpha = 0.05f)),
+                        .background(PrimaryLight.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
                             .size(200.dp)
                             .clip(CircleShape)
-                            .background(AccentGreen.copy(alpha = 0.15f)),
+                            .background(PrimaryLight.copy(alpha = 0.35f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(160.dp)
                                 .clip(CircleShape)
-                                .background(AccentGreen)
+                                .background(Primary)
                                 .clickable { onStartRecording() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -197,11 +197,11 @@ fun DashboardScreen(
                                 Icon(
                                     Icons.Default.PlayArrow,
                                     contentDescription = "Start",
-                                    tint = DarkBg,
+                                    tint = Color.White,
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(Modifier.height(4.dp))
-                                Text("MULAI", color = DarkBg, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                Text("MULAI", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -227,16 +227,16 @@ fun DashboardScreen(
                                 Icon(
                                     Icons.Default.SignalCellularAlt,
                                     contentDescription = null,
-                                    tint = AccentGreen,
+                                    tint = Primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text("GPS", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    Text(if (isGpsEnabled) "Aktif" else "Mati", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text("GPS", color = OnSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(if (isGpsEnabled) "Aktif" else "Mati", color = OnSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isGpsEnabled) AccentGreen else Color.Red))
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if (isGpsEnabled) Primary else md_theme_Error))
                         }
                     }
                     Spacer(Modifier.width(16.dp))
@@ -255,16 +255,16 @@ fun DashboardScreen(
                                 Icon(
                                     Icons.Default.Sensors,
                                     contentDescription = null,
-                                    tint = AccentGreen,
+                                    tint = Primary,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Column {
-                                    Text("SENSOR", color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    Text("Aktif", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text("SENSOR", color = OnSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("Aktif", color = OnSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                                 }
                             }
-                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(AccentGreen))
+                            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Primary))
                         }
                     }
                 }
@@ -285,16 +285,16 @@ fun DashboardScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
-                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(DarkBg),
+                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(SurfaceContainer),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color(0xFF5A6B8C), modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.Motorcycle, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
-                                Text("$totalTrips", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                Text("$totalTrips", color = OnSurface, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
                             }
                             Spacer(Modifier.height(12.dp))
-                            Text("Total Perjalanan", color = TextSecondary, fontSize = 12.sp)
+                            Text("Total Perjalanan", color = OnSurfaceVariant, fontSize = 12.sp)
                         }
                     }
                     Spacer(Modifier.width(16.dp))
@@ -310,20 +310,20 @@ fun DashboardScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
-                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(DarkBg),
+                                    modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(SurfaceContainer),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Default.Route, contentDescription = null, tint = Color(0xFF9C27B0), modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.Route, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
                                 }
                                 Spacer(Modifier.width(12.dp))
                                 Row(verticalAlignment = Alignment.Bottom) {
-                                    Text("%.1f".format(totalDist / 1000f), color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                    Text("%.1f".format(totalDist / 1000f), color = OnSurface, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
                                     Spacer(Modifier.width(4.dp))
-                                    Text("km", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
+                                    Text("km", color = OnSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                                 }
                             }
                             Spacer(Modifier.height(12.dp))
-                            Text("Total Jarak", color = TextSecondary, fontSize = 12.sp)
+                            Text("Total Jarak", color = OnSurfaceVariant, fontSize = 12.sp)
                         }
                     }
                 }
@@ -342,25 +342,25 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(md_theme_StatusOrange),
+                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(StatusOrange.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp))
+                                Icon(Icons.Default.CloudUpload, contentDescription = null, tint = StatusOrange, modifier = Modifier.size(28.dp))
                             }
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Upload Tertunda", color = md_theme_StatusOrange, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                Text("Menunggu koneksi Wi-Fi", color = TextSecondary, fontSize = 12.sp)
+                                Text("Upload Tertunda", color = StatusOrange, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Menunggu koneksi Wi-Fi", color = OnSurfaceVariant, fontSize = 12.sp)
                             }
                             Column(horizontalAlignment = Alignment.End) {
-                                Text("$pendingUploads", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                                Text("$pendingUploads", color = OnSurface, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
                                 Spacer(Modifier.height(4.dp))
                                 Text(
                                     "ACTION NEEDED",
-                                    color = md_theme_StatusOrange,
+                                    color = StatusOrange,
                                     fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.border(1.dp, md_theme_StatusOrange.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.border(1.dp, StatusOrange.copy(alpha = 0.5f), RoundedCornerShape(4.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                                 )
                             }
                         }
@@ -376,15 +376,15 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(AccentGreen.copy(alpha = 0.2f)),
+                                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(PrimaryLight.copy(alpha = 0.4f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.CloudUpload, contentDescription = null, tint = AccentGreen, modifier = Modifier.size(28.dp))
+                                Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Primary, modifier = Modifier.size(28.dp))
                             }
                             Spacer(Modifier.width(16.dp))
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Data Tersinkronisasi", color = AccentGreen, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                Text("Semua perjalanan telah diunggah", color = TextSecondary, fontSize = 12.sp)
+                                Text("Data Tersinkronisasi", color = Primary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Semua perjalanan telah diunggah", color = OnSurfaceVariant, fontSize = 12.sp)
                             }
                         }
                     }

@@ -26,8 +26,18 @@ constructor(private val app: Application, private val store: DataStore<Preferenc
     private val userNameKey = stringPreferencesKey("user_name")
     private val userEmailKey = stringPreferencesKey("user_email")
     private val vehicleTypeKey = stringPreferencesKey("vehicle_type")
+    private val onboardingCompletedKey = booleanPreferencesKey("onboarding_completed")
 
     val samplingRateFlow: Flow<Int> = store.data.map { prefs -> prefs[samplingHzKey] ?: 100 }
+
+    suspend fun isOnboardingCompleted(): Boolean {
+        val prefs = store.data.first()
+        return prefs[onboardingCompletedKey] ?: false
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean) {
+        store.edit { it[onboardingCompletedKey] = completed }
+    }
 
     suspend fun getOrCreateUserId(): String {
         val prefs = store.data.first()

@@ -12,10 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_SurfaceContainerLowest
+import com.pemalang.roaddamage.ui.theme.md_theme_Primary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
+import com.pemalang.roaddamage.ui.theme.md_theme_PrimaryFixed
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.height
@@ -31,11 +31,11 @@ enum class NavDestination(val label: String, val icon: ImageVector) {
     Settings("Settings", Icons.Default.Settings)
 }
 
-// ── Design tokens ──
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val NavBg = md_theme_SurfaceContainerLowest   // White
+private val Primary = md_theme_Primary
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val Indicator = md_theme_PrimaryFixed          // Light sage green tint
 
 /**
  * Reusable bottom navigation bar used across all main screens.
@@ -50,8 +50,8 @@ fun BottomNavBar(
 ) {
     NavigationBar(
         modifier = Modifier.height(80.dp),
-        containerColor = DarkBg,
-        contentColor = AccentGreen,
+        containerColor = NavBg,
+        contentColor = Primary,
         windowInsets = WindowInsets.navigationBars
     ) {
         NavDestination.entries.forEach { dest ->
@@ -61,11 +61,11 @@ fun BottomNavBar(
                 icon = { Icon(dest.icon, contentDescription = dest.label) },
                 label = { Text(dest.label) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = AccentGreen,
-                    selectedTextColor = AccentGreen,
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary,
-                    indicatorColor = CardBg
+                    selectedIconColor = Primary,
+                    selectedTextColor = Primary,
+                    unselectedIconColor = OnSurfaceVariant,
+                    unselectedTextColor = OnSurfaceVariant,
+                    indicatorColor = Indicator
                 )
             )
         }

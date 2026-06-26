@@ -43,12 +43,12 @@ import com.pemalang.roaddamage.ui.components.PermissionSettingsRedirectDialog
 import java.io.File
 import kotlinx.coroutines.delay
 
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_Primary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
 
-// ── Design tokens ──
-private val AccentGreen = md_theme_AccentGreen
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val AccentGreen = md_theme_Primary
+private val TextSecondary = md_theme_OnSurfaceVariant
 
 /**
  * Top-level screen that orchestrates:
@@ -61,10 +61,10 @@ private val TextSecondary = md_theme_TextSecondary
 fun HomeScreen(
     onStartRecording: () -> Unit,
     onOpenTrips: () -> Unit,
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    vm: RecordingViewModel = hiltViewModel()
 ) {
     val ctx = LocalContext.current
-    val vm: RecordingViewModel = hiltViewModel()
 
     // ── Collect ViewModel state ──
     val isRecording by vm.recording.collectAsState()

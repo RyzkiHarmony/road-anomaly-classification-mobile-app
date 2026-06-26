@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Terrain
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,22 +19,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.delay
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-
-private val DarkBg = md_theme_DarkBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
+import com.pemalang.roaddamage.ui.theme.md_theme_Surface
+import com.pemalang.roaddamage.ui.theme.md_theme_Primary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurface
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
 
 @Composable
-fun SplashScreen(onFinished: () -> Unit) {
+fun SplashScreen(
+    onFinished: (isOnboardingCompleted: Boolean) -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
     val alpha = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
@@ -43,13 +43,14 @@ fun SplashScreen(onFinished: () -> Unit) {
             animationSpec = tween(durationMillis = 1000)
         )
         delay(800)
-        onFinished()
+        val completed = viewModel.isOnboardingCompleted()
+        onFinished(completed)
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBg),
+            .background(md_theme_Surface),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -57,25 +58,24 @@ fun SplashScreen(onFinished: () -> Unit) {
             modifier = Modifier.alpha(alpha.value)
         ) {
             Image(
-                imageVector = Icons.Default.Warning,
+                imageVector = Icons.Default.Terrain,
                 contentDescription = "Logo",
-                colorFilter = ColorFilter.tint(AccentGreen),
+                colorFilter = ColorFilter.tint(md_theme_Primary),
                 modifier = Modifier.size(80.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Road Damage Detector",
-                color = TextPrimary,
+                color = md_theme_OnSurface,
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Crowdsourcing Road Quality",
-                color = TextPrimary.copy(alpha = 0.7f),
+                color = md_theme_OnSurfaceVariant,
                 fontSize = 14.sp
             )
         }
     }
 }
-

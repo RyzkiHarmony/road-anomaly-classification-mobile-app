@@ -9,14 +9,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_SurfaceContainerLowest
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurface
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
 
-// ── Design tokens ──
-private val CardBg = md_theme_CardBg
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val DialogBg = md_theme_SurfaceContainerLowest   // white
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
 
 /**
  * Dialog explaining *why* the app needs certain permissions.
@@ -42,9 +42,9 @@ fun PermissionRationaleDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
         },
-        containerColor = CardBg,
-        titleContentColor = TextPrimary,
-        textContentColor = TextSecondary
+        containerColor = DialogBg,
+        titleContentColor = OnSurface,
+        textContentColor = OnSurfaceVariant
     )
 }
 
@@ -80,9 +80,9 @@ fun PermissionSettingsRedirectDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
         },
-        containerColor = CardBg,
-        titleContentColor = TextPrimary,
-        textContentColor = TextSecondary
+        containerColor = DialogBg,
+        titleContentColor = OnSurface,
+        textContentColor = OnSurfaceVariant
     )
 }
 
@@ -114,8 +114,8 @@ fun GpsDisabledDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Batal") }
         },
-        containerColor = CardBg,
-        titleContentColor = TextPrimary,
-        textContentColor = TextSecondary
+        containerColor = DialogBg,
+        titleContentColor = OnSurface,
+        textContentColor = OnSurfaceVariant
     )
 }

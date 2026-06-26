@@ -37,6 +37,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pemalang.roaddamage.model.UploadStatus
+import com.pemalang.roaddamage.model.AnomalyEvent
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.Dispatchers
@@ -50,15 +51,20 @@ import org.osmdroid.views.overlay.Polyline
 
 import com.pemalang.roaddamage.ui.theme.*
 
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val SurfaceBg = md_theme_Surface
+private val CardBg = md_theme_SurfaceContainerLowest
+private val Primary = md_theme_Primary
+private val PrimaryLight = md_theme_PrimaryFixed
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val SurfaceContainer = md_theme_SurfaceContainer
+private val OutlineVar = md_theme_OutlineVariant
 private val StatusGreen = md_theme_StatusGreen
 private val StatusOrange = md_theme_StatusOrange
-private val GraphLine = md_theme_AccentGreen
-private val SpikeRed = md_theme_StatusRed
+private val StatusRed = md_theme_StatusRed
+private val ErrorColor = md_theme_Error
+private val GraphLine = md_theme_Primary
 
 @Composable
 fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
@@ -66,6 +72,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     val ui by vm.ui.collectAsState()
     val host = remember { SnackbarHostState() }
     val showDeleteDialog = remember { mutableStateOf(false) }
+    val selectedAnomaly = remember { mutableStateOf<AnomalyEvent?>(null) }
     val ctx = LocalContext.current
 
     LaunchedEffect(tripId) {
@@ -91,7 +98,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     }
 
     Scaffold(
-            containerColor = DarkBg,
+            containerColor = SurfaceBg,
             snackbarHost = { SnackbarHost(hostState = host) },
             topBar = {
                 val trip = ui.trip
@@ -106,7 +113,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = OnSurface)
                     }
                     Column(
                             modifier = Modifier.weight(1f),
@@ -114,18 +121,18 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                     ) {
                         Text(
                                 text = "Trip #${tripId.takeLast(6).uppercase()}",
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
-                        Text(text = dateStr, color = TextSecondary, fontSize = 12.sp)
+                        Text(text = dateStr, color = OnSurfaceVariant, fontSize = 12.sp)
                     }
                     Row {
                         IconButton(onClick = { vm.shareTrip() }) {
-                            Icon(Icons.Default.Share, "Share", tint = TextPrimary)
+                            Icon(Icons.Default.Share, "Share", tint = OnSurface)
                         }
                         IconButton(onClick = { vm.saveToDownloads() }) {
-                            Icon(Icons.Default.Download, "Download", tint = TextPrimary)
+                            Icon(Icons.Default.Download, "Download", tint = OnSurface)
                         }
                     }
                 }
@@ -140,7 +147,8 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                     MapSection(
                             ctx = ctx,
                             points = ui.points,
-                            anomalyEvents = ui.anomalyEvents
+                            anomalyEvents = ui.anomalyEvents,
+                            onAnomalyClick = { selectedAnomaly.value = it }
                     )
 
                     // Overlay stats on map bottom
@@ -172,19 +180,19 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                     Icon(
                                             Icons.Filled.BarChart,
                                             null,
-                                            tint = AccentGreen,
+                                            tint = Primary,
                                             modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                             "Vertical G-Force (Y-Axis)",
-                                            color = TextPrimary,
-                                            fontWeight = FontWeight.Bold
+                                            color = OnSurface,
+                                            fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Accelerometer Y-Axis", color = TextSecondary, fontSize = 10.sp)
+                            Text("Accelerometer Y-Axis", color = OnSurfaceVariant, fontSize = 10.sp)
 
                             Spacer(modifier = Modifier.height(16.dp))
 
@@ -203,16 +211,16 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                             colors =
                                     CardDefaults.cardColors(
                                             containerColor =
-                                                    if (isUploaded) StatusGreen.copy(alpha = 0.1f)
-                                                    else StatusOrange.copy(alpha = 0.1f)
+                                                    if (isUploaded) StatusGreen.copy(alpha = 0.08f)
+                                                    else StatusOrange.copy(alpha = 0.08f)
                                     ),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.fillMaxWidth().height(70.dp),
                             border =
                                     androidx.compose.foundation.BorderStroke(
                                             1.dp,
-                                            if (isUploaded) StatusGreen.copy(alpha = 0.3f)
-                                            else StatusOrange.copy(alpha = 0.3f)
+                                            if (isUploaded) StatusGreen.copy(alpha = 0.2f)
+                                            else StatusOrange.copy(alpha = 0.2f)
                                     )
                     ) {
                         Row(
@@ -224,8 +232,8 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                             Modifier.size(40.dp)
                                                     .background(
                                                             if (isUploaded)
-                                                                    StatusGreen.copy(alpha = 0.2f)
-                                                            else StatusOrange.copy(alpha = 0.2f),
+                                                                    StatusGreen.copy(alpha = 0.15f)
+                                                            else StatusOrange.copy(alpha = 0.15f),
                                                             CircleShape
                                                     ),
                                     contentAlignment = Alignment.Center
@@ -241,13 +249,13 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                         if (isUploaded) "Unggah Selesai" else "Menunggu Unggah",
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Bold
+                                        color = OnSurface,
+                                        fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                         if (isUploaded) "Data tersinkronisasi dengan server"
                                         else "Data tersimpan secara lokal",
-                                        color = TextSecondary,
+                                        color = OnSurfaceVariant,
                                         fontSize = 10.sp
                                 )
                             }
@@ -256,7 +264,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                         onClick = { vm.enqueueUpload() },
                                         colors =
                                                 ButtonDefaults.buttonColors(
-                                                        containerColor = AccentGreen
+                                                        containerColor = Primary
                                                 ),
                                         shape = RoundedCornerShape(8.dp),
                                         contentPadding =
@@ -265,9 +273,9 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                 ) {
                                     Text(
                                             "Unggah Sekarang",
-                                            color = Color.Black,
+                                            color = Color.White,
                                             fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -277,14 +285,14 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                     modifier =
                                             Modifier.size(32.dp)
                                                     .background(
-                                                            CardBg.copy(alpha = 0.5f),
+                                                            SurfaceContainer,
                                                             RoundedCornerShape(8.dp)
                                                     )
                             ) {
                                 Icon(
                                         Icons.Default.Delete,
                                         "Hapus",
-                                        tint = TextSecondary,
+                                        tint = OnSurfaceVariant,
                                         modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -293,9 +301,50 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                 }
             } else {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = AccentGreen)
+                    CircularProgressIndicator(color = Primary)
                 }
             }
+        }
+
+        if (showDeleteDialog.value) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog.value = false },
+                containerColor = CardBg,
+                title = { Text("Hapus Perjalanan", color = OnSurface, fontWeight = FontWeight.SemiBold) },
+                text = { Text("Apakah Anda yakin ingin menghapus data perjalanan ini secara permanen dari perangkat?", color = OnSurfaceVariant) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showDeleteDialog.value = false
+                            vm.deleteTrip()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorColor)
+                    ) {
+                        Text("Hapus", color = Color.White)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog.value = false }) {
+                        Text("Batal", color = OnSurfaceVariant)
+                    }
+                }
+            )
+        }
+
+        if (selectedAnomaly.value != null) {
+            AnomalyDetailDialog(
+                anomaly = selectedAnomaly.value!!,
+                onDismiss = { selectedAnomaly.value = null },
+                onOpenInMaps = { lat, lng ->
+                    try {
+                        val uri = "geo:$lat,$lng?q=$lat,$lng"
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri))
+                        ctx.startActivity(intent)
+                    } catch (e: Exception) {
+                        // ignore fallback
+                    }
+                }
+            )
         }
     }
 }
@@ -303,7 +352,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
 @Composable
 fun DetailStatCard(label: String, value: String, unit: String, highlight: Boolean = false) {
     Card(
-            colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = 0.9f)),
+            colors = CardDefaults.cardColors(containerColor = CardBg.copy(alpha = 0.95f)),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.width(100.dp).height(80.dp)
     ) {
@@ -314,17 +363,17 @@ fun DetailStatCard(label: String, value: String, unit: String, highlight: Boolea
         ) {
             Text(
                     text = value,
-                    color = if (highlight) StatusOrange else TextPrimary,
+                    color = if (highlight) StatusOrange else OnSurface,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
             )
-            Text(text = unit, color = TextSecondary, fontSize = 10.sp)
+            Text(text = unit, color = OnSurfaceVariant, fontSize = 10.sp)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                     text = label,
-                    color = if (highlight) StatusOrange else TextSecondary,
+                    color = if (highlight) StatusOrange else OnSurfaceVariant,
                     fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
             )
         }
     }
@@ -350,7 +399,8 @@ private fun markerDrawable(ctx: Context, color: Int): BitmapDrawable {
 private fun MapSection(
         ctx: Context,
         points: List<Pair<Double, Double>>,
-        anomalyEvents: List<com.pemalang.roaddamage.model.AnomalyEvent> = emptyList()
+        anomalyEvents: List<AnomalyEvent> = emptyList(),
+        onAnomalyClick: (AnomalyEvent) -> Unit
 ) {
     val appCtx = ctx.applicationContext
     val base = remember { java.io.File(appCtx.cacheDir, "osmdroid") }
@@ -367,67 +417,7 @@ private fun MapSection(
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
             isTilesScaledToDpi = true
-
-            // Dark Mode Filter
-            val inverseMatrix =
-                    android.graphics.ColorMatrix(
-                            floatArrayOf(
-                                    -1.0f,
-                                    0.0f,
-                                    0.0f,
-                                    0.0f,
-                                    255f,
-                                    0.0f,
-                                    -1.0f,
-                                    0.0f,
-                                    0.0f,
-                                    255f,
-                                    0.0f,
-                                    0.0f,
-                                    -1.0f,
-                                    0.0f,
-                                    255f,
-                                    0.0f,
-                                    0.0f,
-                                    0.0f,
-                                    1.0f,
-                                    0.0f
-                            )
-                    )
-            val destinationColor = android.graphics.Color.parseColor("#FF2A2A2A")
-            val lr = (255.0f - android.graphics.Color.red(destinationColor)) / 255.0f
-            val lg = (255.0f - android.graphics.Color.green(destinationColor)) / 255.0f
-            val lb = (255.0f - android.graphics.Color.blue(destinationColor)) / 255.0f
-            val grayscaleMatrix =
-                    android.graphics.ColorMatrix(
-                            floatArrayOf(
-                                    lr,
-                                    lg,
-                                    lb,
-                                    0f,
-                                    0f,
-                                    lr,
-                                    lg,
-                                    lb,
-                                    0f,
-                                    0f,
-                                    lr,
-                                    lg,
-                                    lb,
-                                    0f,
-                                    0f,
-                                    0f,
-                                    0f,
-                                    0f,
-                                    1f,
-                                    0f,
-                            )
-                    )
-
-            // Apply simple dark filter (invert + high contrast) or just invert
-            // Using a simple invert for "Dark Mode" effect on standard tiles
-            val filter = android.graphics.ColorMatrixColorFilter(inverseMatrix)
-            this.overlayManager.tilesOverlay.setColorFilter(filter)
+            // Light theme: NO color filter applied — standard map tiles
         }
     }
     androidx.compose.ui.viewinterop.AndroidView(
@@ -439,7 +429,7 @@ private fun MapSection(
                     val geoPoints = points.map { GeoPoint(it.first, it.second) }
                     val polyline =
                             Polyline().apply {
-                                outlinePaint.color = AndroidColor.parseColor("#00E676") // Green
+                                outlinePaint.color = AndroidColor.parseColor("#0F5238") // Forest Green (Primary)
                                 outlinePaint.strokeWidth = 8f
                                 setPoints(geoPoints)
                             }
@@ -448,14 +438,14 @@ private fun MapSection(
                             Marker(mapView).apply {
                                 position = geoPoints.first()
                                 title = "Start"
-                                icon = markerDrawable(ctx, AndroidColor.GREEN)
+                                icon = markerDrawable(ctx, AndroidColor.parseColor("#0F5238"))
                                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                             }
                     val endMarker =
                             Marker(mapView).apply {
                                 position = geoPoints.last()
                                 title = "End"
-                                icon = markerDrawable(ctx, AndroidColor.RED)
+                                icon = markerDrawable(ctx, AndroidColor.parseColor("#D32F2F")) // Vibrant Red
                                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                             }
                     mapView.overlays.add(startMarker)
@@ -465,10 +455,19 @@ private fun MapSection(
                     anomalyEvents.forEach { event ->
                         val marker = Marker(mapView).apply {
                             position = GeoPoint(event.latitude, event.longitude)
-                            title = "${event.anomalyType} (Conf: ${"%.2f".format(event.confidence)})"
-                            val color = if (event.anomalyType == "Pothole") AndroidColor.RED else AndroidColor.YELLOW
+                            title = null
+                            snippet = null
+                            val color = if (event.anomalyType == "Pothole") {
+                                AndroidColor.parseColor("#D32F2F") // Vibrant Red for Pothole
+                            } else {
+                                AndroidColor.parseColor("#EF6C00") // Vibrant Orange for Speed Bump
+                            }
                             icon = markerDrawable(ctx, color)
                             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                            setOnMarkerClickListener { _, _ ->
+                                onAnomalyClick(event)
+                                true
+                            }
                         }
                         mapView.overlays.add(marker)
                     }
@@ -490,18 +489,11 @@ private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
         val w = size.width
         val h = size.height
 
-        // Draw grid lines
+        // Draw grid lines — light grey-green per DESIGN.md
         val rows = 4
         val cols = 6
         val rowH = h / rows
         val colW = w / cols
-
-        val gridPaint =
-                Paint().apply {
-                    color = android.graphics.Color.parseColor("#33FFFFFF")
-                    strokeWidth = 2f
-                    style = Paint.Style.STROKE
-                }
 
         // Horizontal grid
         for (i in 0..rows) {
@@ -509,7 +501,7 @@ private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
             drawLine(
                     start = androidx.compose.ui.geometry.Offset(0f, y),
                     end = androidx.compose.ui.geometry.Offset(w, y),
-                    color = Color(0x33FFFFFF),
+                    color = Color(0x22424940), // subtle on-surface-variant
                     strokeWidth = 1f
             )
         }
@@ -520,7 +512,7 @@ private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
             drawLine(
                     start = androidx.compose.ui.geometry.Offset(x, 0f),
                     end = androidx.compose.ui.geometry.Offset(x, h),
-                    color = Color(0x33FFFFFF),
+                    color = Color(0x22424940),
                     strokeWidth = 1f
             )
         }
@@ -541,6 +533,191 @@ private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
         }
 
         drawPath(path = path, color = GraphLine, style = Stroke(width = 3f))
+    }
+}
+
+@Composable
+private fun AnomalyDetailDialog(
+    anomaly: AnomalyEvent,
+    onDismiss: () -> Unit,
+    onOpenInMaps: (Double, Double) -> Unit
+) {
+    val isPothole = anomaly.anomalyType.equals("Pothole", ignoreCase = true)
+    val titleText = if (isPothole) "Lubang Jalan (Pothole)" else "Polisi Tidur (Speed Bump)"
+    val statusColor = if (isPothole) StatusRed else StatusOrange
+    val icon = if (isPothole) Icons.Default.Warning else Icons.Default.ReportProblem
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBg),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header Icon
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(statusColor.copy(alpha = 0.15f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = statusColor,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Title
+                Text(
+                    text = titleText,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = OnSurface
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Timestamp
+                val timeStr = remember(anomaly.timestamp) {
+                    SimpleDateFormat("dd MMM yyyy, HH:mm:ss", Locale.getDefault())
+                        .format(Date(anomaly.timestamp))
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        tint = OnSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = timeStr,
+                        fontSize = 12.sp,
+                        color = OnSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+                HorizontalDivider(color = OutlineVar.copy(alpha = 0.5f))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Detail Items
+                // 1. Confidence Meter
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Tingkat Keyakinan",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = OnSurfaceVariant
+                        )
+                        Text(
+                            text = "${"%.1f".format(anomaly.confidence * 100)}%",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = statusColor
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { anomaly.confidence },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        color = statusColor,
+                        trackColor = statusColor.copy(alpha = 0.2f),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2. Coordinate Info
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceContainer.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "Lokasi Koordinat",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = OnSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Lat: ${anomaly.latitude}",
+                                fontSize = 12.sp,
+                                color = OnSurface
+                            )
+                            Text(
+                                text = "Lng: ${anomaly.longitude}",
+                                fontSize = 12.sp,
+                                color = OnSurface
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                onOpenInMaps(anomaly.latitude, anomaly.longitude)
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Map,
+                                contentDescription = "Open Maps",
+                                tint = Primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action Buttons
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Tutup",
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
     }
 }
 

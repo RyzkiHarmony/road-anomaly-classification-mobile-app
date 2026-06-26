@@ -20,25 +20,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
-
-private val DarkBg = md_theme_DarkBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_Surface
+import com.pemalang.roaddamage.ui.theme.md_theme_Primary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnPrimary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurface
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
+import com.pemalang.roaddamage.ui.theme.md_theme_PrimaryFixed
 
 @Composable
-fun OnboardingScreen(onContinue: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+fun OnboardingScreen(
+    onContinue: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel()
+) {
+    Box(modifier = Modifier.fillMaxSize().background(md_theme_Surface)) {
         Column(
                 modifier = Modifier.fillMaxSize().padding(24.dp),
                 verticalArrangement = Arrangement.Center,
@@ -46,12 +46,12 @@ fun OnboardingScreen(onContinue: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.weight(1f))
 
-            // Icon / Illustration
+            // Icon / Illustration — soft sage tinted circle
             Box(
                     modifier =
                             Modifier.size(160.dp)
                                     .background(
-                                            AccentGreen.copy(alpha = 0.1f),
+                                            md_theme_PrimaryFixed.copy(alpha = 0.3f),
                                             RoundedCornerShape(80.dp)
                                     ),
                     contentAlignment = Alignment.Center
@@ -59,7 +59,7 @@ fun OnboardingScreen(onContinue: () -> Unit) {
                 Icon(
                         imageVector = Icons.Default.AddRoad,
                         contentDescription = null,
-                        tint = AccentGreen,
+                        tint = md_theme_Primary,
                         modifier = Modifier.size(80.dp)
                 )
             }
@@ -69,9 +69,9 @@ fun OnboardingScreen(onContinue: () -> Unit) {
             // Title
             Text(
                     text = "Selamat Datang di\nRoad Damage Detector",
-                    color = TextPrimary,
+                    color = md_theme_OnSurface,
                     fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
                     lineHeight = 32.sp
             )
@@ -82,24 +82,24 @@ fun OnboardingScreen(onContinue: () -> Unit) {
             Text(
                     text =
                             "Bantu kami memetakan kualitas jalan di sekitarmu. Cukup nyalakan aplikasi saat berkendara, dan sensor akan mendeteksi guncangan secara otomatis.",
-                    color = TextSecondary,
+                    color = md_theme_OnSurfaceVariant,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Button
+            // Button — Sage Green per DESIGN.md
             Button(
-                    onClick = onContinue,
+                    onClick = { viewModel.completeOnboarding(onContinue) },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors =
                             ButtonDefaults.buttonColors(
-                                    containerColor = AccentGreen,
-                                    contentColor = DarkBg
+                                    containerColor = md_theme_Primary,
+                                    contentColor = md_theme_OnPrimary
                             ),
                     shape = RoundedCornerShape(12.dp)
-            ) { Text(text = "Mulai Sekarang", fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+            ) { Text(text = "Mulai Sekarang", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

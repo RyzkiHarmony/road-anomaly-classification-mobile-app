@@ -19,13 +19,15 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.md_theme_OnSurfaceVariant
+import com.pemalang.roaddamage.ui.theme.md_theme_OutlineVariant
 import com.pemalang.roaddamage.ui.theme.md_theme_GraphZ
 import com.pemalang.roaddamage.ui.theme.md_theme_GraphX
 import com.pemalang.roaddamage.ui.theme.md_theme_GraphY
 
-// ── Design tokens ──
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val GridLine = md_theme_OutlineVariant
 private val GraphLineZ = md_theme_GraphZ
 private val GraphLineX = md_theme_GraphX
 private val GraphLineY = md_theme_GraphY
@@ -43,9 +45,9 @@ fun Chart3Lines(ax: FloatArray, ay: FloatArray, az: FloatArray, modifier: Modifi
     val range = (maxV - minV).let { if (it < 1e-3f) 1f else it }
 
     Canvas(modifier = modifier) {
-        // Draw centre grid line
+        // Draw centre grid line — light grey-green per DESIGN.md
         val midY = size.height / 2
-        drawLine(Color(0xFF2C3240), Offset(0f, midY), Offset(size.width, midY))
+        drawLine(GridLine, Offset(0f, midY), Offset(size.width, midY))
 
         fun drawSeries(values: FloatArray, color: Color) {
             if (values.isEmpty()) return
@@ -75,6 +77,6 @@ fun LegendItem(color: Color, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(modifier = Modifier.size(8.dp).background(color, CircleShape))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = TextSecondary, fontSize = 10.sp)
+        Text(label, color = OnSurfaceVariant, fontSize = 10.sp)
     }
 }

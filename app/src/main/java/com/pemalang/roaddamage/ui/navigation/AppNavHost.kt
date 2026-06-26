@@ -16,6 +16,10 @@ import com.pemalang.roaddamage.ui.screens.OnboardingScreen
 import com.pemalang.roaddamage.ui.screens.SettingsScreen
 import com.pemalang.roaddamage.ui.screens.SplashScreen
 import com.pemalang.roaddamage.ui.screens.TripListScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.pemalang.roaddamage.ui.screens.RecordingViewModel
+import com.pemalang.roaddamage.ui.screens.TripListViewModel
+import com.pemalang.roaddamage.ui.screens.SettingsViewModel
 
 object Routes {
     const val Splash = "splash"
@@ -28,6 +32,10 @@ object Routes {
 
 @Composable
 fun AppNavHost(navController: NavHostController = rememberNavController()) {
+    val recordingViewModel: RecordingViewModel = hiltViewModel()
+    val tripListViewModel: TripListViewModel = hiltViewModel()
+    val settingsViewModel: SettingsViewModel = hiltViewModel()
+
     Surface(color = MaterialTheme.colorScheme.background) {
         NavHost(
                 navController = navController,
@@ -39,8 +47,9 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
         ) {
             composable(Routes.Splash) {
                 SplashScreen(
-                        onFinished = {
-                            navController.navigate(Routes.Onboarding) {
+                        onFinished = { completed ->
+                            val targetRoute = if (completed) Routes.Home else Routes.Onboarding
+                            navController.navigate(targetRoute) {
                                 popUpTo(Routes.Splash) { inclusive = true }
                             }
                         }
@@ -59,7 +68,8 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 HomeScreen(
                         onStartRecording = {},
                         onOpenTrips = { navController.navigate(Routes.Trips) },
-                        onOpenSettings = { navController.navigate(Routes.Settings) }
+                        onOpenSettings = { navController.navigate(Routes.Settings) },
+                        vm = recordingViewModel
                 )
             }
             composable(Routes.Trips) {
@@ -70,7 +80,8 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                                 popUpTo(Routes.Home) { inclusive = true }
                             }
                         },
-                        onNavigateSettings = { navController.navigate(Routes.Settings) }
+                        onNavigateSettings = { navController.navigate(Routes.Settings) },
+                        vm = tripListViewModel
                 )
             }
             composable(Routes.Settings) {
@@ -81,7 +92,8 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                                 popUpTo(Routes.Home) { inclusive = true }
                             }
                         },
-                        onNavigateTrips = { navController.navigate(Routes.Trips) }
+                        onNavigateTrips = { navController.navigate(Routes.Trips) },
+                        vm = settingsViewModel
                 )
             }
             composable(

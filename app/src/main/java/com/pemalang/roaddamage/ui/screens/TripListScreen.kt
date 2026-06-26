@@ -32,23 +32,20 @@ import java.util.*
 import com.pemalang.roaddamage.ui.components.BottomNavBar
 import com.pemalang.roaddamage.ui.components.NavDestination
 
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
-import com.pemalang.roaddamage.ui.theme.md_theme_StatusGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_StatusOrange
-import com.pemalang.roaddamage.ui.theme.md_theme_StatusRed
+import com.pemalang.roaddamage.ui.theme.*
 
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
+// ── Design tokens (Friendly Road Detection) ──
+private val SurfaceBg = md_theme_Surface
+private val CardBg = md_theme_SurfaceContainerLowest
+private val Primary = md_theme_Primary
+private val PrimaryLight = md_theme_PrimaryFixed
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val SurfaceContainer = md_theme_SurfaceContainer
+private val OutlineVar = md_theme_OutlineVariant
 private val StatusGreen = md_theme_StatusGreen
 private val StatusOrange = md_theme_StatusOrange
-private val DeleteRed = md_theme_StatusRed
+private val DeleteRed = md_theme_Error
 
 enum class SortOption {
     NEWEST,
@@ -62,9 +59,9 @@ enum class SortOption {
 fun TripListScreen(
         onOpenTrip: (Trip) -> Unit,
         onNavigateHome: () -> Unit,
-        onNavigateSettings: () -> Unit
+        onNavigateSettings: () -> Unit,
+        vm: TripListViewModel = hiltViewModel()
 ) {
-    val vm: TripListViewModel = hiltViewModel()
     val trips by vm.trips.collectAsState()
     val host = remember { SnackbarHostState() }
     val ctx = LocalContext.current
@@ -78,12 +75,12 @@ fun TripListScreen(
         AlertDialog(
                 onDismissRequest = { tripToDelete = null },
                 title = {
-                    Text("Konfirmasi Hapus", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Text("Konfirmasi Hapus", color = OnSurface, fontWeight = FontWeight.SemiBold)
                 },
                 text = {
                     Text(
                             "Apakah Anda yakin ingin menghapus data perjalanan ini? Data yang dihapus tidak dapat dikembalikan.",
-                            color = TextSecondary
+                            color = OnSurfaceVariant
                     )
                 },
                 confirmButton = {
@@ -92,16 +89,16 @@ fun TripListScreen(
                                 vm.deleteTrip(tripToDelete!!)
                                 tripToDelete = null
                             }
-                    ) { Text("Hapus", color = DeleteRed, fontWeight = FontWeight.Bold) }
+                    ) { Text("Hapus", color = DeleteRed, fontWeight = FontWeight.SemiBold) }
                 },
                 dismissButton = {
                     TextButton(onClick = { tripToDelete = null }) {
-                        Text("Batal", color = TextSecondary)
+                        Text("Batal", color = OnSurfaceVariant)
                     }
                 },
                 containerColor = CardBg,
-                textContentColor = TextSecondary,
-                titleContentColor = TextPrimary
+                textContentColor = OnSurfaceVariant,
+                titleContentColor = OnSurface
         )
     }
 
@@ -140,7 +137,7 @@ fun TripListScreen(
     }
 
     Scaffold(
-            containerColor = DarkBg,
+            containerColor = SurfaceBg,
             snackbarHost = { SnackbarHost(hostState = host) },
             bottomBar = {
                 BottomNavBar(
@@ -158,15 +155,16 @@ fun TripListScreen(
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             Text(
                     text = "LOG DATA",
-                    color = AccentGreen,
+                    color = Primary,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp
             )
             Text(
                     text = "Riwayat Perjalanan",
-                    color = TextPrimary,
+                    color = OnSurface,
                     fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -188,7 +186,7 @@ fun TripListScreen(
                         Icon(
                                 Icons.AutoMirrored.Filled.Sort,
                                 contentDescription = "Urutkan",
-                                tint = AccentGreen
+                                tint = Primary
                         )
                     }
                     DropdownMenu(
@@ -197,28 +195,28 @@ fun TripListScreen(
                             containerColor = CardBg
                     ) {
                         DropdownMenuItem(
-                                text = { Text("Terbaru", color = TextPrimary) },
+                                text = { Text("Terbaru", color = OnSurface) },
                                 onClick = {
                                     sortOption = SortOption.NEWEST
                                     showSortMenu = false
                                 }
                         )
                         DropdownMenuItem(
-                                text = { Text("Terlama", color = TextPrimary) },
+                                text = { Text("Terlama", color = OnSurface) },
                                 onClick = {
                                     sortOption = SortOption.OLDEST
                                     showSortMenu = false
                                 }
                         )
                         DropdownMenuItem(
-                                text = { Text("Jarak Terjauh", color = TextPrimary) },
+                                text = { Text("Jarak Terjauh", color = OnSurface) },
                                 onClick = {
                                     sortOption = SortOption.DISTANCE_DESC
                                     showSortMenu = false
                                 }
                         )
                         DropdownMenuItem(
-                                text = { Text("Durasi Terlama", color = TextPrimary) },
+                                text = { Text("Durasi Terlama", color = OnSurface) },
                                 onClick = {
                                     sortOption = SortOption.DURATION_DESC
                                     showSortMenu = false
@@ -236,18 +234,18 @@ fun TripListScreen(
                         Icon(
                                 Icons.Default.DirectionsCar,
                                 contentDescription = null,
-                                tint = TextSecondary.copy(alpha = 0.5f),
+                                tint = OnSurfaceVariant.copy(alpha = 0.4f),
                                 modifier = Modifier.size(64.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                                 text = "Belum ada perjalanan",
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Bold
+                                color = OnSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold
                         )
                         Text(
                                 text = "Mulai rekam perjalanan Anda sekarang!",
-                                color = TextSecondary.copy(alpha = 0.7f),
+                                color = OnSurfaceVariant.copy(alpha = 0.7f),
                                 fontSize = 12.sp
                         )
                     }
@@ -271,12 +269,11 @@ fun TripListScreen(
                         SwipeToDismissBox(
                                 state = dismissState,
                                 backgroundContent = {
-                                    val color = DeleteRed
                                     Box(
                                             modifier =
                                                     Modifier.fillMaxSize()
                                                             .background(
-                                                                    color,
+                                                                    DeleteRed,
                                                                     RoundedCornerShape(16.dp)
                                                             )
                                                             .padding(horizontal = 20.dp),
@@ -306,13 +303,13 @@ fun FilterButton(text: String, selected: Boolean, onClick: () -> Unit) {
             onClick = onClick,
             colors =
                     ButtonDefaults.buttonColors(
-                            containerColor = if (selected) AccentGreen else CardBg,
-                            contentColor = if (selected) Color.Black else TextSecondary
+                            containerColor = if (selected) Primary else SurfaceContainer,
+                            contentColor = if (selected) Color.White else OnSurfaceVariant
                     ),
             shape = RoundedCornerShape(20.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             modifier = Modifier.height(36.dp)
-    ) { Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.Bold) }
+    ) { Text(text = text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
 }
 
 @Composable
@@ -344,7 +341,7 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                             modifier =
                                     Modifier.size(40.dp)
                                             .background(
-                                                    Color(0xFF2C3E50),
+                                                    SurfaceContainer,
                                                     RoundedCornerShape(8.dp)
                                             ),
                             contentAlignment = Alignment.Center
@@ -352,7 +349,7 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                         Icon(
                                 Icons.Default.DateRange,
                                 null,
-                                tint = TextSecondary,
+                                tint = OnSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                         )
                     }
@@ -360,18 +357,18 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                     Column {
                         Text(
                                 text = dateStr,
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
-                        Text(text = "$timeStr • $dayStr", color = TextSecondary, fontSize = 12.sp)
+                        Text(text = "$timeStr • $dayStr", color = OnSurfaceVariant, fontSize = 12.sp)
                     }
                 }
 
-                // Status Badge
+                // Status Badge — pill-shaped per DESIGN.md
                 Surface(
                         color = (if (isUploaded) StatusGreen else StatusOrange).copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(24.dp) // pill / rounded-xl
                 ) {
                     Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -391,64 +388,64 @@ fun TripCard(trip: Trip, onClick: () -> Unit) {
                                 text = if (isUploaded) "UPLOADED" else "PENDING",
                                 color = if (isUploaded) StatusGreen else StatusOrange,
                                 fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            HorizontalDivider(color = Color(0xFF2C3E50), thickness = 1.dp)
+            HorizontalDivider(color = OutlineVar.copy(alpha = 0.5f), thickness = 1.dp)
             Spacer(modifier = Modifier.height(16.dp))
 
             // Stats
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "DISTANCE", color = TextSecondary, fontSize = 10.sp)
+                    Text(text = "DISTANCE", color = OnSurfaceVariant, fontSize = 10.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                                 text = "%.1f".format(trip.distance / 1000f),
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
                         Text(
                                 " km",
-                                color = AccentGreen,
+                                color = Primary,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(bottom = 3.dp)
                         )
                     }
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "DURATION", color = TextSecondary, fontSize = 10.sp)
+                    Text(text = "DURATION", color = OnSurfaceVariant, fontSize = 10.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     val m = (trip.duration / 60).toInt()
                     val s = (trip.duration % 60).toInt()
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
                                 text = "$m",
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
                         Text(
                                 " m ",
-                                color = TextSecondary,
+                                color = OnSurfaceVariant,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 3.dp)
                         )
                         Text(
                                 text = "$s",
-                                color = TextPrimary,
+                                color = OnSurface,
                                 fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                         )
                         Text(
                                 " s",
-                                color = TextSecondary,
+                                color = OnSurfaceVariant,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 3.dp)
                         )

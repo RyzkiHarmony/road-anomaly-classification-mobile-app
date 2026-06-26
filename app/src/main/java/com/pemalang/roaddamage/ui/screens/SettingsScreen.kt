@@ -27,30 +27,31 @@ import com.pemalang.roaddamage.BuildConfig
 import com.pemalang.roaddamage.ui.components.BottomNavBar
 import com.pemalang.roaddamage.ui.components.NavDestination
 
-import com.pemalang.roaddamage.ui.theme.md_theme_DarkBg
-import com.pemalang.roaddamage.ui.theme.md_theme_CardBg
-import com.pemalang.roaddamage.ui.theme.md_theme_AccentGreen
-import com.pemalang.roaddamage.ui.theme.md_theme_TextPrimary
-import com.pemalang.roaddamage.ui.theme.md_theme_TextSecondary
+import com.pemalang.roaddamage.ui.theme.*
 
-private val DarkBg = md_theme_DarkBg
-private val CardBg = md_theme_CardBg
-private val AccentGreen = md_theme_AccentGreen
-private val TextPrimary = md_theme_TextPrimary
-private val TextSecondary = md_theme_TextSecondary
-private val DeleteRed = Color(0xFFEF5350)
-private val StatusGreen = Color(0xFF00E676)
+// ── Design tokens (Friendly Road Detection) ──
+private val SurfaceBg = md_theme_Surface
+private val CardBg = md_theme_SurfaceContainerLowest
+private val Primary = md_theme_Primary
+private val PrimaryLight = md_theme_PrimaryFixed
+private val OnSurface = md_theme_OnSurface
+private val OnSurfaceVariant = md_theme_OnSurfaceVariant
+private val SurfaceContainer = md_theme_SurfaceContainer
+private val OutlineVar = md_theme_OutlineVariant
+private val InputBg = md_theme_InputBg
+private val DeleteRed = md_theme_Error
+private val StatusGreen = md_theme_Primary
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTrips: () -> Unit) {
-        val vm: SettingsViewModel = hiltViewModel()
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onNavigateHome: () -> Unit,
+    onNavigateTrips: () -> Unit,
+    vm: SettingsViewModel = hiltViewModel()
+) {
         val ui by vm.ui.collectAsState()
         val host = remember { SnackbarHostState() }
         val scrollState = rememberScrollState()
-
-        // Temporary local state for sliders
-        var sliderHz by remember(ui.samplingHz) { mutableStateOf(ui.samplingHz.toFloat()) }
-        var sliderGps by remember(ui.gpsIntervalSec) { mutableStateOf(ui.gpsIntervalSec.toFloat()) }
 
         // Edit Profile Dialog State
         var showEditProfile by remember { mutableStateOf(false) }
@@ -71,7 +72,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
         }
 
         Scaffold(
-                containerColor = DarkBg,
+                containerColor = SurfaceBg,
                 snackbarHost = { SnackbarHost(hostState = host) },
                 topBar = {
                         Row(
@@ -83,15 +84,15 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                         Icon(
                                                 Icons.AutoMirrored.Filled.ArrowBack,
                                                 contentDescription = "Back",
-                                                tint = TextPrimary
+                                                tint = OnSurface
                                         )
                                 }
                                 Spacer(modifier = Modifier.weight(1f))
                                 Text(
                                         text = "KONFIGURASI",
-                                        color = TextPrimary,
+                                        color = OnSurface,
                                         fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                 )
                                 Spacer(modifier = Modifier.weight(1f))
                                 Spacer(modifier = Modifier.width(48.dp)) // Balance the back button
@@ -134,64 +135,15 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                 ParameterCard(
                                         title = "Accelerometer Rate",
                                         subtitle = "Sampling frequency in Hz",
-                                        value = "${sliderHz.toInt()} Hz"
-                                ) {
-                                        Slider(
-                                                value = sliderHz,
-                                                onValueChange = { sliderHz = it },
-                                                onValueChangeFinished = {
-                                                        vm.setSampling(sliderHz.toInt())
-                                                },
-                                                valueRange = 100f..100f,
-                                                steps = 0,
-                                                enabled = false, // DISABLED: Changing this breaks the ML Pipeline (Butterworth Filter & ONNX Tensor size)
-                                                // increments roughly
-                                                colors =
-                                                        SliderDefaults.colors(
-                                                                thumbColor = AccentGreen,
-                                                                activeTrackColor = AccentGreen,
-                                                                inactiveTrackColor = CardBg
-                                                        )
-                                        )
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                                Text("10", color = TextSecondary, fontSize = 10.sp)
-                                                Text("50", color = TextSecondary, fontSize = 10.sp)
-                                                Text("100", color = TextSecondary, fontSize = 10.sp)
-                                        }
-                                }
+                                        value = "${ui.samplingHz} Hz"
+                                )
 
                                 // GPS Interval
                                 ParameterCard(
                                         title = "Interval GPS",
                                         subtitle = "Frekuensi pembaruan lokasi",
-                                        value = "${sliderGps.toInt()} s"
-                                ) {
-                                        Slider(
-                                                value = sliderGps,
-                                                onValueChange = { sliderGps = it },
-                                                onValueChangeFinished = {
-                                                        vm.setGpsInterval(sliderGps.toInt())
-                                                },
-                                                valueRange = 1f..20f,
-                                                colors =
-                                                        SliderDefaults.colors(
-                                                                thumbColor = AccentGreen,
-                                                                activeTrackColor = AccentGreen,
-                                                                inactiveTrackColor = CardBg
-                                                        )
-                                        )
-                                        Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                                Text("1s", color = TextSecondary, fontSize = 10.sp)
-                                                Text("10s", color = TextSecondary, fontSize = 10.sp)
-                                                Text("20s", color = TextSecondary, fontSize = 10.sp)
-                                        }
-                                }
+                                        value = "${ui.gpsIntervalSec} s"
+                                )
 
 
                         }
@@ -219,9 +171,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                                 modifier =
                                                                         Modifier.size(40.dp)
                                                                                 .background(
-                                                                                        Color(
-                                                                                                0xFF2C3E50
-                                                                                        ),
+                                                                                        SurfaceContainer,
                                                                                         RoundedCornerShape(
                                                                                                 8.dp
                                                                                         )
@@ -231,21 +181,21 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                                 Icon(
                                                                         Icons.Default.Wifi,
                                                                         null,
-                                                                        tint = TextSecondary
+                                                                        tint = OnSurfaceVariant
                                                                 )
                                                         }
                                                         Spacer(modifier = Modifier.width(16.dp))
                                                         Column {
                                                                 Text(
                                                                         "Unggah Otomatis di WiFi",
-                                                                        color = TextPrimary,
+                                                                        color = OnSurface,
                                                                         fontWeight =
-                                                                                FontWeight.Bold,
+                                                                                FontWeight.SemiBold,
                                                                         fontSize = 16.sp
                                                                 )
                                                                 Text(
                                                                         "Hemat penggunaan data seluler",
-                                                                        color = TextSecondary,
+                                                                        color = OnSurfaceVariant,
                                                                         fontSize = 12.sp
                                                                 )
                                                         }
@@ -256,12 +206,12 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                         colors =
                                                                 SwitchDefaults.colors(
                                                                         checkedThumbColor =
-                                                                                AccentGreen,
+                                                                                Primary,
                                                                         checkedTrackColor =
-                                                                                Color(0xFF004D40),
+                                                                                PrimaryLight.copy(alpha = 0.5f),
                                                                         uncheckedThumbColor =
-                                                                                TextSecondary,
-                                                                        uncheckedTrackColor = DarkBg
+                                                                                OnSurfaceVariant,
+                                                                        uncheckedTrackColor = SurfaceContainer
                                                                 )
                                                 )
                                         }
@@ -290,14 +240,14 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 Text(
                                                         "Hapus Data Terunggah",
                                                         color = DeleteRed,
-                                                        fontWeight = FontWeight.Bold
+                                                        fontWeight = FontWeight.SemiBold
                                                 )
                                         }
                                 }
 
                                 Text(
                                         "Hanya menghapus salinan lokal dari data yang sudah disinkronkan ke cloud.",
-                                        color = TextSecondary,
+                                        color = OnSurfaceVariant,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(horizontal = 4.dp)
                                 )
@@ -317,19 +267,19 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                         Column(modifier = Modifier.padding(20.dp)) {
                                                 Text(
                                                         "Road Damage Detector",
-                                                        color = TextPrimary,
-                                                        fontWeight = FontWeight.Bold,
+                                                        color = OnSurface,
+                                                        fontWeight = FontWeight.SemiBold,
                                                         fontSize = 16.sp
                                                 )
                                                 Spacer(modifier = Modifier.height(8.dp))
                                                 Text(
                                                         "Aplikasi ini mendeteksi dan memetakan kerusakan jalan secara otomatis menggunakan sensor smartphone. Data yang dikumpulkan membantu pemantauan infrastruktur.",
-                                                        color = TextSecondary,
+                                                        color = OnSurfaceVariant,
                                                         fontSize = 12.sp,
                                                         lineHeight = 18.sp
                                                 )
                                                 Spacer(modifier = Modifier.height(16.dp))
-                                                HorizontalDivider(color = DarkBg, thickness = 1.dp)
+                                                HorizontalDivider(color = OutlineVar.copy(alpha = 0.5f), thickness = 1.dp)
                                                 Spacer(modifier = Modifier.height(16.dp))
                                                 Row(
                                                         horizontalArrangement =
@@ -338,14 +288,14 @@ fun SettingsScreen(onBack: () -> Unit, onNavigateHome: () -> Unit, onNavigateTri
                                                 ) {
                                                         Text(
                                                                 "Versi Aplikasi",
-                                                                color = TextSecondary,
+                                                                color = OnSurfaceVariant,
                                                                 fontSize = 12.sp
                                                         )
                                                         Text(
                                                                 "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                                                                color = TextPrimary,
+                                                                color = OnSurface,
                                                                 fontSize = 12.sp,
-                                                                fontWeight = FontWeight.Bold
+                                                                fontWeight = FontWeight.SemiBold
                                                         )
                                                 }
                                         }
@@ -374,11 +324,11 @@ fun UserProfileCard(name: String, id: String, role: String, onClick: () -> Unit)
                                         modifier =
                                                 Modifier.size(60.dp)
                                                         .clip(CircleShape)
-                                                        .background(Color(0xFF2C3E50))
+                                                        .background(SurfaceContainer)
                                                         .padding(8.dp),
                                         colorFilter =
                                                 androidx.compose.ui.graphics.ColorFilter.tint(
-                                                        TextSecondary
+                                                        OnSurfaceVariant
                                                 )
                                 )
                                 Box(
@@ -393,26 +343,26 @@ fun UserProfileCard(name: String, id: String, role: String, onClick: () -> Unit)
                         Column {
                                 Text(
                                         text = name,
-                                        color = TextPrimary,
+                                        color = OnSurface,
                                         fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
                                         text = "ID: #$id",
-                                        color = AccentGreen,
+                                        color = Primary,
                                         fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.SemiBold
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Surface(
-                                        color = Color(0xFF1A3F45),
+                                        color = PrimaryLight.copy(alpha = 0.4f),
                                         shape = RoundedCornerShape(4.dp)
                                 ) {
                                         Text(
                                                 text = "• $role",
-                                                color = AccentGreen,
+                                                color = Primary,
                                                 fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                fontWeight = FontWeight.SemiBold,
                                                 modifier =
                                                         Modifier.padding(
                                                                 horizontal = 8.dp,
@@ -440,7 +390,7 @@ fun EditProfileDialog(
         AlertDialog(
                 onDismissRequest = onDismiss,
                 containerColor = CardBg,
-                title = { Text("Edit Profile", color = TextPrimary) },
+                title = { Text("Edit Profile", color = OnSurface) },
                 text = {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
@@ -449,12 +399,14 @@ fun EditProfileDialog(
                                         label = { Text("Name") },
                                         colors =
                                                 OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = TextPrimary,
-                                                        unfocusedTextColor = TextPrimary,
-                                                        focusedBorderColor = AccentGreen,
-                                                        unfocusedBorderColor = TextSecondary,
-                                                        focusedLabelColor = AccentGreen,
-                                                        unfocusedLabelColor = TextSecondary
+                                                        focusedTextColor = OnSurface,
+                                                        unfocusedTextColor = OnSurface,
+                                                        focusedBorderColor = Primary,
+                                                        unfocusedBorderColor = OutlineVar,
+                                                        focusedLabelColor = Primary,
+                                                        unfocusedLabelColor = OnSurfaceVariant,
+                                                        focusedContainerColor = InputBg,
+                                                        unfocusedContainerColor = InputBg
                                                 )
                                 )
                                 OutlinedTextField(
@@ -463,12 +415,14 @@ fun EditProfileDialog(
                                         label = { Text("Email") },
                                         colors =
                                                 OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = TextPrimary,
-                                                        unfocusedTextColor = TextPrimary,
-                                                        focusedBorderColor = AccentGreen,
-                                                        unfocusedBorderColor = TextSecondary,
-                                                        focusedLabelColor = AccentGreen,
-                                                        unfocusedLabelColor = TextSecondary
+                                                        focusedTextColor = OnSurface,
+                                                        unfocusedTextColor = OnSurface,
+                                                        focusedBorderColor = Primary,
+                                                        unfocusedBorderColor = OutlineVar,
+                                                        focusedLabelColor = Primary,
+                                                        unfocusedLabelColor = OnSurfaceVariant,
+                                                        focusedContainerColor = InputBg,
+                                                        unfocusedContainerColor = InputBg
                                                 )
                                 )
                                 OutlinedTextField(
@@ -477,12 +431,14 @@ fun EditProfileDialog(
                                         label = { Text("Vehicle Type (e.g., Motor, Mobil)") },
                                         colors =
                                                 OutlinedTextFieldDefaults.colors(
-                                                        focusedTextColor = TextPrimary,
-                                                        unfocusedTextColor = TextPrimary,
-                                                        focusedBorderColor = AccentGreen,
-                                                        unfocusedBorderColor = TextSecondary,
-                                                        focusedLabelColor = AccentGreen,
-                                                        unfocusedLabelColor = TextSecondary
+                                                        focusedTextColor = OnSurface,
+                                                        unfocusedTextColor = OnSurface,
+                                                        focusedBorderColor = Primary,
+                                                        unfocusedBorderColor = OutlineVar,
+                                                        focusedLabelColor = Primary,
+                                                        unfocusedLabelColor = OnSurfaceVariant,
+                                                        focusedContainerColor = InputBg,
+                                                        unfocusedContainerColor = InputBg
                                                 )
                                 )
                         }
@@ -490,11 +446,11 @@ fun EditProfileDialog(
                 confirmButton = {
                         Button(
                                 onClick = { onSave(name, email, vehicle) },
-                                colors = ButtonDefaults.buttonColors(containerColor = AccentGreen)
-                        ) { Text("Save", color = Color.Black) }
+                                colors = ButtonDefaults.buttonColors(containerColor = Primary)
+                        ) { Text("Save", color = Color.White) }
                 },
                 dismissButton = {
-                        TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary) }
+                        TextButton(onClick = onDismiss) { Text("Cancel", color = OnSurfaceVariant) }
                 }
         )
 }
@@ -505,15 +461,15 @@ fun SectionHeader(title: String, icon: ImageVector) {
                 Icon(
                         icon,
                         contentDescription = null,
-                        tint = AccentGreen,
+                        tint = Primary,
                         modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                         text = title,
-                        color = TextSecondary,
+                        color = OnSurfaceVariant,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp
                 )
         }
@@ -524,7 +480,7 @@ fun ParameterCard(
         title: String,
         subtitle: String,
         value: String,
-        content: @Composable ColumnScope.() -> Unit
+        content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
         Card(
                 colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -540,24 +496,24 @@ fun ParameterCard(
                                 Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                                 text = title,
-                                                color = TextPrimary,
+                                                color = OnSurface,
                                                 fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.SemiBold
                                         )
                                         Text(
                                                 text = subtitle,
-                                                color = TextSecondary,
+                                                color = OnSurfaceVariant,
                                                 fontSize = 12.sp
                                         )
                                 }
                                 Surface(
-                                        color = AccentGreen.copy(alpha = 0.1f),
+                                        color = PrimaryLight.copy(alpha = 0.4f),
                                         shape = RoundedCornerShape(8.dp)
                                 ) {
                                         Text(
                                                 text = value,
-                                                color = AccentGreen,
-                                                fontWeight = FontWeight.Bold,
+                                                color = Primary,
+                                                fontWeight = FontWeight.SemiBold,
                                                 fontSize = 12.sp,
                                                 modifier =
                                                         Modifier.padding(
@@ -567,8 +523,10 @@ fun ParameterCard(
                                         )
                                 }
                         }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        content()
+                        if (content != null) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                content()
+                        }
                 }
         }
 }
