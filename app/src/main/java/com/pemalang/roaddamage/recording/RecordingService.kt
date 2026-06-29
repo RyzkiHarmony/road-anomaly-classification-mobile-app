@@ -283,8 +283,13 @@ class RecordingService : Service() {
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
                         
-                        val isPotholeDetected = potholeProb >= 0.85f
-                        val isSpeedBumpDetected = speedBumpProb >= 0.85f
+                        // Threshold di bawah ini adalah Recall-Maximizing Operating Point (bukan F1-optimal).
+                        // Pothole: 0.3939 (turun dari default 0.5) → Recall naik 68%→76%, Precision turun 52%→45%, F1 turun 0.59→0.57
+                        // Speed Bump: 0.5070 (sedikit di atas default 0.5) → F1 naik 0.769→0.796
+                        // Keputusan ini domain-driven: false negative (miss) > false positive (alarm) untuk keselamatan jalan.
+                        // Threshold dipilih dari kurva Precision-Recall pada OOF validation, bukan test set.
+                        val isPotholeDetected = potholeProb >= 0.3939f
+                        val isSpeedBumpDetected = speedBumpProb >= 0.5070f
                         
                         if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()
