@@ -78,6 +78,10 @@ class SensorFusionProcessor {
     private val gxBuffer = FloatArray(WINDOW_SIZE)
     private val gyBuffer = FloatArray(WINDOW_SIZE)
     private val gzBuffer = FloatArray(WINDOW_SIZE)
+    private val linAxBuffer = FloatArray(WINDOW_SIZE) 
+    private val linAyBuffer = FloatArray(WINDOW_SIZE) 
+    private val linAzBuffer = FloatArray(WINDOW_SIZE) 
+    private val magDevBuffer = FloatArray(WINDOW_SIZE) 
     private val tsBuffer = LongArray(WINDOW_SIZE)
 
     private var bufferIndex = 0
@@ -204,6 +208,14 @@ class SensorFusionProcessor {
         // 2. Project linear acceleration onto gravity vector to get vertical acceleration
         val aVertical = linAx * gxNorm + linAy * gyNorm + linAz * gzNorm
 
+        // 2. Magnitude Deviation dari 1G
+        // ax = linAx + grx (total accelerometer = linear + gravity)
+        val totalAx = linAx + grx
+        val totalAy = linAy + gry
+        val totalAz = linAz + grz
+        val totalMag = sqrt(totalAx * totalAx + totalAy * totalAy + totalAz * totalAz)
+        val magnitudeDeviation = totalMag - 9.81f
+
         // 3. Horizontal acceleration magnitude
         val linMagSq = linAx * linAx + linAy * linAy + linAz * linAz
         val aHorizSq = max(0f, linMagSq - aVertical * aVertical)
@@ -224,6 +236,10 @@ class SensorFusionProcessor {
             gxBuffer[bufferIndex] = gx
             gyBuffer[bufferIndex] = gy
             gzBuffer[bufferIndex] = gz
+            linAxBuffer[bufferIndex] = linAx
+            linAyBuffer[bufferIndex] = linAy
+            linAzBuffer[bufferIndex] = linAz
+            magDevBuffer[bufferIndex] = magnitudeDeviation
             tsBuffer[bufferIndex] = timestamp
             bufferIndex++
             samplesSinceLastInference++
@@ -235,6 +251,10 @@ class SensorFusionProcessor {
             System.arraycopy(gxBuffer, 1, gxBuffer, 0, WINDOW_SIZE - 1)
             System.arraycopy(gyBuffer, 1, gyBuffer, 0, WINDOW_SIZE - 1)
             System.arraycopy(gzBuffer, 1, gzBuffer, 0, WINDOW_SIZE - 1)
+            System.arraycopy(linAxBuffer, 1, linAxBuffer, 0, WINDOW_SIZE - 1)
+            System.arraycopy(linAyBuffer, 1, linAyBuffer, 0, WINDOW_SIZE - 1)
+            System.arraycopy(linAzBuffer, 1, linAzBuffer, 0, WINDOW_SIZE - 1)
+            System.arraycopy(magDevBuffer, 1, magDevBuffer, 0, WINDOW_SIZE - 1)
             System.arraycopy(tsBuffer, 1, tsBuffer, 0, WINDOW_SIZE - 1)
 
             aVertBuffer[WINDOW_SIZE - 1] = aVerticalFiltered
@@ -243,6 +263,10 @@ class SensorFusionProcessor {
             gxBuffer[WINDOW_SIZE - 1] = gx
             gyBuffer[WINDOW_SIZE - 1] = gy
             gzBuffer[WINDOW_SIZE - 1] = gz
+            linAxBuffer[WINDOW_SIZE - 1] = linAx
+            linAyBuffer[WINDOW_SIZE - 1] = linAy
+            linAzBuffer[WINDOW_SIZE - 1] = linAz
+            magDevBuffer[WINDOW_SIZE - 1] = magnitudeDeviation
             tsBuffer[WINDOW_SIZE - 1] = timestamp
 
             samplesSinceLastInference++
@@ -360,8 +384,13 @@ class SensorFusionProcessor {
             System.arraycopy(speedBuffer, 0, effectiveSpeedBuffer, 0, WINDOW_SIZE)
         }
 
-        // Siapkan Tensor shape [1, 14, 200] = 2800 flat floats
-        val tensorData = FloatArray(14 * WINDOW_SIZE)
+        // Siapkan Tensor shape [1, 18, 200] = 3600 flat floats
+        // Channel order HARUS identik dengan CHANNELS di build_cnn_data.py:
+        // [0]=a_vertical, [1]=a_horizontal, [2]=speed, [3]=crest_factor, [4]=jerk,
+        // [5]=gx, [6]=gy, [7]=gz, [8]=roll_accel, [9]=pitch_accel,
+        // [10]=a_vert_rms, [11]=a_vert_zcr, [12]=a_horiz_rms, [13]=energy_ratio_vh,
+        // [14]=lin_ax, [15]=lin_ay, [16]=lin_az, [17]=magnitude_deviation
+        val tensorData = FloatArray(18 * WINDOW_SIZE)
         System.arraycopy(aVertBuffer, 0, tensorData, 0, WINDOW_SIZE)
         System.arraycopy(aHorizBuffer, 0, tensorData, WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(effectiveSpeedBuffer, 0, tensorData, 2 * WINDOW_SIZE, WINDOW_SIZE)
@@ -376,9 +405,13 @@ class SensorFusionProcessor {
         System.arraycopy(aVertZcr, 0, tensorData, 11 * WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(aHorizRms, 0, tensorData, 12 * WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(energyRatioVh, 0, tensorData, 13 * WINDOW_SIZE, WINDOW_SIZE)
+        System.arraycopy(linAxBuffer, 0, tensorData, 14 * WINDOW_SIZE, WINDOW_SIZE)
+        System.arraycopy(linAyBuffer, 0, tensorData, 15 * WINDOW_SIZE, WINDOW_SIZE)
+        System.arraycopy(linAzBuffer, 0, tensorData, 16 * WINDOW_SIZE, WINDOW_SIZE)
+        System.arraycopy(magDevBuffer, 0, tensorData, 17 * WINDOW_SIZE, WINDOW_SIZE)
 
         // Z-Score Standardize per channel before passing to model
-        for (c in 0 until 14) {
+        for (c in 0 until 18) {
             val offset = c * WINDOW_SIZE
 
             if (USE_INSTANCE_NORMALIZATION) {
