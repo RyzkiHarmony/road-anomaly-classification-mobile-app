@@ -8,10 +8,12 @@ import kotlin.math.sqrt
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
+import com.pemalang.roaddamage.model.SensorEventData
+
 class AccelerometerHandler(private val sensorManager: SensorManager, private var currentDelay: Int) :
         SensorEventListener {
     val readings =
-            MutableSharedFlow<FloatArray>(
+            MutableSharedFlow<SensorEventData>(
                     replay = 0,
                     extraBufferCapacity = 64,
                     onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -47,7 +49,7 @@ class AccelerometerHandler(private val sensorManager: SensorManager, private var
         val rawMag = sqrt(x * x + y * y + z * z).toFloat()
         val m = alpha * lastMag + (1 - alpha) * rawMag
         lastMag = m
-        readings.tryEmit(floatArrayOf(x, y, z, m))
+        readings.tryEmit(SensorEventData(event.timestamp, floatArrayOf(x, y, z, m)))
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}

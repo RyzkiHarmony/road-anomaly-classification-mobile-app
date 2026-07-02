@@ -197,11 +197,11 @@ fun DashboardScreen(
                                 Icon(
                                     Icons.Default.PlayArrow,
                                     contentDescription = "Start",
-                                    tint = Color.White,
+                                    tint = Color(0xFFFAFAFA),
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(Modifier.height(4.dp))
-                                Text("MULAI", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                                Text("MULAI", color = Color(0xFFFAFAFA), fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }

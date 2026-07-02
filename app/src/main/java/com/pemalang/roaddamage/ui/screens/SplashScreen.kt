@@ -65,14 +65,14 @@ fun SplashScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Road Damage Detector",
+                text = "SADAR",
                 color = md_theme_OnSurface,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Crowdsourcing Road Quality",
+                text = "Smart Anomaly Detection and Assessment for Roads",
                 color = md_theme_OnSurfaceVariant,
                 fontSize = 14.sp
             )

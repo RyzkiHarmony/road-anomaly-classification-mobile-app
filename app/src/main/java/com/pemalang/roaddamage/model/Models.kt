@@ -50,3 +50,26 @@ enum class UploadStatus {
     FAILED
 }
 
+data class SensorEventData(
+    val timestampNs: Long,
+    val values: FloatArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as SensorEventData
+
+        if (timestampNs != other.timestampNs) return false
+        if (!values.contentEquals(other.values)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = timestampNs.hashCode()
+        result = 31 * result + values.contentHashCode()
+        return result
+    }
+}
+

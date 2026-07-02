@@ -6,13 +6,14 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import com.pemalang.roaddamage.model.SensorEventData
 
 class GravityHandler(
     private val sensorManager: SensorManager,
     private var samplingDelayUs: Int
 ) : SensorEventListener {
 
-    val readings = MutableSharedFlow<FloatArray>(
+    val readings = MutableSharedFlow<SensorEventData>(
         replay = 0,
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -42,7 +43,7 @@ class GravityHandler(
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        readings.tryEmit(floatArrayOf(event.values[0], event.values[1], event.values[2]))
+        readings.tryEmit(SensorEventData(event.timestamp, floatArrayOf(event.values[0], event.values[1], event.values[2])))
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}

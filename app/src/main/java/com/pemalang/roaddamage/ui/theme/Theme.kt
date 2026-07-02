@@ -5,63 +5,56 @@ import androidx.compose.runtime.Composable
 
 
 // ── Surface & Background ──
-val md_theme_Surface         = Color(0xFFF8F9FA)
-val md_theme_SurfaceDim      = Color(0xFFD9DADB)
-val md_theme_SurfaceBright   = Color(0xFFF8F9FA)
+val md_theme_Surface         = Color(0xFFF8FAFC) // Slate 50
+val md_theme_SurfaceDim      = Color(0xFFF1F5F9) // Slate 100
+val md_theme_SurfaceBright   = Color(0xFFFFFFFF)
 val md_theme_SurfaceContainerLowest = Color(0xFFFFFFFF)
-val md_theme_SurfaceContainerLow    = Color(0xFFF3F4F5)
-val md_theme_SurfaceContainer       = Color(0xFFEDEEEF)
-val md_theme_SurfaceContainerHigh   = Color(0xFFE7E8E9)
-val md_theme_SurfaceContainerHighest = Color(0xFFE1E3E4)
-val md_theme_SurfaceVariant  = Color(0xFFE1E3E4)
+val md_theme_SurfaceContainerLow    = Color(0xFFF8FAFC)
+val md_theme_SurfaceContainer       = Color(0xFFF1F5F9)
+val md_theme_SurfaceContainerHigh   = Color(0xFFE2E8F0)
+val md_theme_SurfaceContainerHighest = Color(0xFFCBD5E1)
+val md_theme_SurfaceVariant  = Color(0xFFE2E8F0)
 
 // ── On Surface (Text) ──
-val md_theme_OnSurface        = Color(0xFF191C1D)
-val md_theme_OnSurfaceVariant = Color(0xFF404943)
-val md_theme_InverseSurface   = Color(0xFF2E3132)
-val md_theme_InverseOnSurface = Color(0xFFF0F1F2)
+val md_theme_OnSurface        = Color(0xFF0F172A) // Slate 900
+val md_theme_OnSurfaceVariant = Color(0xFF475569) // Slate 600
+val md_theme_InverseSurface   = Color(0xFF0F172A)
+val md_theme_InverseOnSurface = Color(0xFFF8FAFC)
 
-// ── Primary (Forest Green / Emerald) ──
-val md_theme_Primary            = Color(0xFF0F5238)
+// ── Primary (Pastel Green) ──
+val md_theme_Primary            = Color(0xFF42D392)
 val md_theme_OnPrimary          = Color(0xFFFFFFFF)
-val md_theme_PrimaryContainer   = Color(0xFF2D6A4F)
-val md_theme_OnPrimaryContainer = Color(0xFFA8E7C5)
-val md_theme_InversePrimary     = Color(0xFF95D4B3)
-val md_theme_PrimaryFixed       = Color(0xFFB1F0CE)
-val md_theme_PrimaryFixedDim    = Color(0xFF95D4B3)
-val md_theme_SurfaceTint        = Color(0xFF2C694E)
+val md_theme_PrimaryContainer   = Color(0xFFD4F5E6) 
+val md_theme_OnPrimaryContainer = Color(0xFF0D3D27) 
+val md_theme_InversePrimary     = Color(0xFF7DE6B9) 
+val md_theme_PrimaryFixed       = Color(0xFFD4F5E6)
+val md_theme_PrimaryFixedDim    = Color(0xFFA8EFCE) 
+val md_theme_SurfaceTint        = Color(0xFF42D392)
 
-// ── Secondary ──
-val md_theme_Secondary            = Color(0xFF3E6750)
+// ── Secondary (Slate 700) ──
+val md_theme_Secondary            = Color(0xFF334155)
 val md_theme_OnSecondary          = Color(0xFFFFFFFF)
-val md_theme_SecondaryContainer   = Color(0xFFBDEACD)
-val md_theme_OnSecondaryContainer = Color(0xFF426B54)
+val md_theme_SecondaryContainer   = Color(0xFFE2E8F0) // Slate 200
+val md_theme_OnSecondaryContainer = Color(0xFF0F172A) // Slate 900
 
-// ── Tertiary ──
-val md_theme_Tertiary            = Color(0xFF005236)
+// ── Tertiary (Cyan 600) ──
+val md_theme_Tertiary            = Color(0xFF0891B2)
 val md_theme_OnTertiary          = Color(0xFFFFFFFF)
-val md_theme_TertiaryContainer   = Color(0xFF116C4A)
-val md_theme_OnTertiaryContainer = Color(0xFF98EABF)
-val md_theme_TertiaryFixed       = Color(0xFFA1F4C8)
-val md_theme_TertiaryFixedDim    = Color(0xFF86D7AD)
+val md_theme_TertiaryContainer   = Color(0xFFCFFAFE) // Cyan 100
+val md_theme_OnTertiaryContainer = Color(0xFF164E63) // Cyan 900
 
-// ── Error (Coral) ──
-val md_theme_Error            = Color(0xFFBA1A1A)
+// ── Error (Red 500) ──
+val md_theme_Error            = Color(0xFFEF4444)
 val md_theme_OnError          = Color(0xFFFFFFFF)
-val md_theme_ErrorContainer   = Color(0xFFFFDAD6)
-val md_theme_OnErrorContainer = Color(0xFF93000A)
+val md_theme_ErrorContainer   = Color(0xFFFEE2E2) // Red 100
+val md_theme_OnErrorContainer = Color(0xFF7F1D1D) // Red 900
 
 // ── Outline ──
-val md_theme_Outline        = Color(0xFF707973)
-val md_theme_OutlineVariant = Color(0xFFBFC9C1)
+val md_theme_Outline        = Color(0xFF94A3B8) // Slate 400
+val md_theme_OutlineVariant = Color(0xFFCBD5E1) // Slate 300
 
-// ── Input Field Background (recessed style per DESIGN.md) ──
-val md_theme_InputBg = Color(0xFFE9ECEF)
-
-// ══════════════════════════════════════════════════════════════
-// Backward-compatible aliases (old token names → new values)
-// These allow gradual migration without breaking references.
-// ══════════════════════════════════════════════════════════════
+// ── Input Field Background ──
+val md_theme_InputBg = Color(0xFFF1F5F9)
 
 val md_theme_DarkBg        = md_theme_Surface
 val md_theme_CardBg        = md_theme_SurfaceContainerLowest  // white cards
@@ -69,15 +62,15 @@ val md_theme_AccentGreen   = md_theme_Primary
 val md_theme_TextPrimary   = md_theme_OnSurface
 val md_theme_TextSecondary = md_theme_OnSurfaceVariant
 
-// Status Colors (highly vibrant and context-appropriate)
-val md_theme_StatusGreen  = Color(0xFF2E7D32)         
-val md_theme_StatusOrange = Color(0xFFEF6C00)         
-val md_theme_StatusRed    = Color(0xFFD32F2F)         
+// Status Colors (Vibrant Dashboard Standard)
+val md_theme_StatusGreen  = Color(0xFF10B981)         
+val md_theme_StatusOrange = Color(0xFFF59E0B)         
+val md_theme_StatusRed    = Color(0xFFEF4444)         
 
-// Graph Colors (highly distinguishable, vibrant colors for X, Y, Z axes)
-val md_theme_GraphX = Color(0xFFE53935)  
-val md_theme_GraphY = Color(0xFF00897B)  
-val md_theme_GraphZ = Color(0xFF1E88E5)  
+// Graph Colors (Professional distinguishable)
+val md_theme_GraphX = Color(0xFFEF4444)  // Red
+val md_theme_GraphY = Color(0xFF10B981)  // Green
+val md_theme_GraphZ = Color(0xFF3B82F6)  // Blue
 
 // ── Google Font configuration for Sora ──
 private val fontProvider = androidx.compose.ui.text.googlefonts.GoogleFont.Provider(

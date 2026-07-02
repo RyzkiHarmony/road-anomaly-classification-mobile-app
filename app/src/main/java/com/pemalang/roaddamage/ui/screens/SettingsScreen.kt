@@ -447,7 +447,7 @@ fun EditProfileDialog(
                         Button(
                                 onClick = { onSave(name, email, vehicle) },
                                 colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                        ) { Text("Save", color = Color.White) }
+                        ) { Text("Save", color = Color(0xFFFAFAFA)) }
                 },
                 dismissButton = {
                         TextButton(onClick = onDismiss) { Text("Cancel", color = OnSurfaceVariant) }

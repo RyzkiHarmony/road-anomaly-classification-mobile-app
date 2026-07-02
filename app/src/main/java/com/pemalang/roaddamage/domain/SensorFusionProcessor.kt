@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlin.math.max
 import kotlin.math.sqrt
+import com.pemalang.roaddamage.model.SensorEventData
+import com.pemalang.roaddamage.model.SensorReading
 
 /**
  * Menerima data dari Linear Acceleration dan Gravity, melakukan resampling berbasis waktu (100Hz),
@@ -13,16 +15,7 @@ import kotlin.math.sqrt
  */
 class SensorFusionProcessor {
 
-    private class RawReading(
-        val timestamp: Long,
-        val linAx: Float,
-        val linAy: Float,
-        val linAz: Float,
-        val gx: Float,
-        val gy: Float,
-        val gz: Float,
-        val speed: Float
-    )
+
 
     companion object {
         private const val TAG = "SensorFusion"
@@ -37,37 +30,45 @@ class SensorFusionProcessor {
 
         // Computed scaler parameters dari Python training (cnn_1d_scaler_params.json)
         private val MEANS = floatArrayOf(
-            0.0001622676f,  // a_vertical
-            0.015716485f,   // a_horizontal
-            7.7308968f,     // speed
-            1.6351699f,     // a_vertical_crest_factor
-            -0.02136093f,   // a_vertical_jerk
-            0.01278548f,    // gx
-            -0.00165105f,   // gy
-            -0.00052315f,   // gz
-            -0.01277581f,   // g_roll_accel
-            0.00496474f,    // g_pitch_accel
-            1.4430078f,     // a_vertical_rms
-            0.11783215f,    // a_vertical_zcr
-            4.0556123f,     // a_horizontal_rms
-            0.43539162f     // energy_ratio_vh
+            0.0001622676f,  // 0: a_vertical
+            0.015716485f,   // 1: a_horizontal
+            7.7308968f,     // 2: speed
+            1.6351699f,     // 3: a_vertical_crest_factor
+            -0.02136093f,   // 4: a_vertical_jerk
+            0.01278548f,    // 5: gx
+            -0.00165105f,   // 6: gy
+            -0.00052315f,   // 7: gz
+            -0.01277581f,   // 8: g_roll_accel
+            0.00496474f,    // 9: g_pitch_accel
+            1.4430078f,     // 10: a_vertical_rms
+            0.11783215f,    // 11: a_vertical_zcr
+            4.0556123f,     // 12: a_horizontal_rms
+            0.43539162f,    // 13: energy_ratio_vh
+            0.0f,           // 14: lin_ax
+            0.0f,           // 15: lin_ay
+            0.0f,           // 16: lin_az
+            0.0f            // 17: magnitude_deviation
         )
 
         private val STDS = floatArrayOf(
-            1.7957241f,     // a_vertical
-            4.9882046f,     // a_horizontal
-            3.5719800f,     // speed
-            0.2567671f,     // a_vertical_crest_factor
-            64.977662f,     // a_vertical_jerk
-            0.7785460f,     // gx
-            0.3646522f,     // gy
-            0.4208314f,     // gz
-            105.08636f,     // g_roll_accel
-            46.306300f,     // g_pitch_accel
-            1.0675629f,     // a_vertical_rms
-            0.0587104f,     // a_vertical_zcr
-            2.9060467f,     // a_horizontal_rms
-            0.3047168f      // energy_ratio_vh
+            1.7957241f,     // 0: a_vertical
+            4.9882046f,     // 1: a_horizontal
+            3.5719800f,     // 2: speed
+            0.2567671f,     // 3: a_vertical_crest_factor
+            64.977662f,     // 4: a_vertical_jerk
+            0.7785460f,     // 5: gx
+            0.3646522f,     // 6: gy
+            0.4208314f,     // 7: gz
+            105.08636f,     // 8: g_roll_accel
+            46.306300f,     // 9: g_pitch_accel
+            1.0675629f,     // 10: a_vertical_rms
+            0.0587104f,     // 11: a_vertical_zcr
+            2.9060467f,     // 12: a_horizontal_rms
+            0.3047168f,     // 13: energy_ratio_vh
+            1.0f,           // 14: lin_ax
+            1.0f,           // 15: lin_ay
+            1.0f,           // 16: lin_az
+            1.0f            // 17: magnitude_deviation
         )
     }
 
@@ -87,14 +88,11 @@ class SensorFusionProcessor {
     private var bufferIndex = 0
     private var samplesSinceLastInference = 0
 
-    // Latest states
-    private var lastGravity = floatArrayOf(0f, 0f, 9.8f)
-    private var lastGyro = floatArrayOf(0f, 0f, 0f)
-    private var lastSpeed = 0f
-
     // Queue for raw samples waiting for time-based resampling (100Hz)
-    private val rawQueue = ArrayList<RawReading>()
-    private var nextResampleTimestamp = -1L
+    private val linAccelQueue = ArrayList<SensorEventData>()
+    private val gyroQueue = ArrayList<SensorEventData>()
+    private val gravityQueue = ArrayList<SensorEventData>()
+    private var nextResampleTimestampNs = -1L
 
     // Filters to match Python's scipy.signal.butter 6.0Hz cutoff
     private val filterVertical = ButterworthFilter()
@@ -111,92 +109,143 @@ class SensorFusionProcessor {
     )
     val inferenceTrigger = _inferenceTrigger.asSharedFlow()
 
-    fun updateGravity(gx: Float, gy: Float, gz: Float) {
-        lastGravity[0] = gx
-        lastGravity[1] = gy
-        lastGravity[2] = gz
-        if (bufferIndex == 1) {
-            Log.d(TAG, "Gravity updated: [$gx, $gy, $gz]")
-        }
-    }
+    // Flow untuk mengirim hasil fusi independen ke Recorder (CSV logging)
+    private val _fusedSensorStream = MutableSharedFlow<SensorReading>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+    val fusedSensorStream = _fusedSensorStream.asSharedFlow()
 
-    fun updateGyro(gx: Float, gy: Float, gz: Float) {
-        lastGyro[0] = gx
-        lastGyro[1] = gy
-        lastGyro[2] = gz
-    }
+    private var lastSpeed = 0f
 
     fun updateSpeed(speed: Float) {
         if (speed != lastSpeed) {
-            Log.d(TAG, "Speed updated: $speed m/s")
+            // Log.d(TAG, "Speed updated: $speed m/s")
         }
         lastSpeed = speed
     }
 
-    /**
-     * Entry point utama saat data sensor mentah dikumpulkan.
-     * Fungsi ini menyimpan data ke antrean rawQueue dan memproses resampling
-     * linier berkala (setiap 10ms) untuk mengeliminasi jitter sensor bawaan Android.
-     */
-    fun processLinearAcceleration(linAx: Float, linAy: Float, linAz: Float, timestamp: Long) {
-        val currentGyro = lastGyro
-        rawQueue.add(RawReading(timestamp, linAx, linAy, linAz, currentGyro[0], currentGyro[1], currentGyro[2], lastSpeed))
+    @Synchronized
+    fun addLinearAccel(data: SensorEventData) {
+        linAccelQueue.add(data)
+        processQueues()
+    }
 
-        // Batasi ukuran antrean mentah (prune data lebih lama dari 4 detik)
-        val cutoffTime = timestamp - 4000
-        while (rawQueue.isNotEmpty() && rawQueue[0].timestamp < cutoffTime) {
-            rawQueue.removeAt(0)
+    @Synchronized
+    fun addGyro(data: SensorEventData) {
+        gyroQueue.add(data)
+        processQueues()
+    }
+
+    @Synchronized
+    fun addGravity(data: SensorEventData) {
+        gravityQueue.add(data)
+        processQueues()
+    }
+
+    private fun processQueues() {
+        if (linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) return
+
+        if (nextResampleTimestampNs == -1L) {
+            val tLin = linAccelQueue[0].timestampNs
+            val tGyr = gyroQueue[0].timestampNs
+            val tGra = gravityQueue[0].timestampNs
+            nextResampleTimestampNs = maxOf(tLin, maxOf(tGyr, tGra))
         }
 
-        if (nextResampleTimestamp == -1L && rawQueue.isNotEmpty()) {
-            nextResampleTimestamp = rawQueue[0].timestamp
-        }
+        while (true) {
+            if (linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) break
 
-        val lastTimestamp = rawQueue.last().timestamp
+            val lastLin = linAccelQueue.last().timestampNs
+            val lastGyr = gyroQueue.last().timestampNs
+            val lastGra = gravityQueue.last().timestampNs
 
-        // Lakukan interpolasi linier untuk setiap tick 10ms (100Hz)
-        while (lastTimestamp >= nextResampleTimestamp) {
-            var r1: RawReading? = null
-            var r2: RawReading? = null
-
-            for (i in 0 until rawQueue.size - 1) {
-                if (rawQueue[i].timestamp <= nextResampleTimestamp && rawQueue[i + 1].timestamp >= nextResampleTimestamp) {
-                    r1 = rawQueue[i]
-                    r2 = rawQueue[i + 1]
-                    break
-                }
+            if (lastLin < nextResampleTimestampNs || lastGyr < nextResampleTimestampNs || lastGra < nextResampleTimestampNs) {
+                break
             }
 
-            if (r1 != null && r2 != null) {
-                val t1 = r1.timestamp
-                val t2 = r2.timestamp
-                val diff = t2 - t1
-                val fraction = if (diff > 0) (nextResampleTimestamp - t1).toFloat() / diff else 0f
+            val linInterp = interpolate(linAccelQueue, nextResampleTimestampNs)
+            val gyrInterp = interpolate(gyroQueue, nextResampleTimestampNs)
+            val graInterp = interpolate(gravityQueue, nextResampleTimestampNs)
 
-                val linAxInterp = r1.linAx + fraction * (r2.linAx - r1.linAx)
-                val linAyInterp = r1.linAy + fraction * (r2.linAy - r1.linAy)
-                val linAzInterp = r1.linAz + fraction * (r2.linAz - r1.linAz)
+            if (linInterp != null && gyrInterp != null && graInterp != null) {
+                val cutoff = nextResampleTimestampNs - 4_000_000_000L
+                pruneQueue(linAccelQueue, cutoff)
+                pruneQueue(gyroQueue, cutoff)
+                pruneQueue(gravityQueue, cutoff)
 
-                val gxInterp = r1.gx + fraction * (r2.gx - r1.gx)
-                val gyInterp = r1.gy + fraction * (r2.gy - r1.gy)
-                val gzInterp = r1.gz + fraction * (r2.gz - r1.gz)
+                val timestampMs = nextResampleTimestampNs / 1_000_000L
 
-                val speedInterp = r1.speed + fraction * (r2.speed - r1.speed)
+                val reading = SensorReading(
+                    timestamp = timestampMs,
+                    accelX = linInterp[0] + graInterp[0],
+                    accelY = linInterp[1] + graInterp[1],
+                    accelZ = linInterp[2] + graInterp[2],
+                    magnitude = 0f,
+                    gyroX = gyrInterp[0],
+                    gyroY = gyrInterp[1],
+                    gyroZ = gyrInterp[2],
+                    linearAccelX = linInterp[0],
+                    linearAccelY = linInterp[1],
+                    linearAccelZ = linInterp[2],
+                    gravityX = graInterp[0],
+                    gravityY = graInterp[1],
+                    gravityZ = graInterp[2],
+                    speed = lastSpeed
+                )
 
-                // Jalankan sensor fusion dan ring buffer pada data yang sudah di-resample
-                processResampledData(linAxInterp, linAyInterp, linAzInterp, gxInterp, gyInterp, gzInterp, speedInterp, nextResampleTimestamp)
+                _fusedSensorStream.tryEmit(reading)
+
+                processResampledData(
+                    linInterp[0], linInterp[1], linInterp[2],
+                    gyrInterp[0], gyrInterp[1], gyrInterp[2],
+                    graInterp[0], graInterp[1], graInterp[2],
+                    lastSpeed, timestampMs
+                )
             }
 
-            nextResampleTimestamp += 10L // 100Hz = interval 10ms
+            nextResampleTimestampNs += 10_000_000L
         }
+    }
+
+    private fun pruneQueue(queue: ArrayList<SensorEventData>, cutoffNs: Long) {
+        while (queue.isNotEmpty() && queue[0].timestampNs < cutoffNs) {
+            queue.removeAt(0)
+        }
+    }
+
+    private fun interpolate(queue: ArrayList<SensorEventData>, targetNs: Long): FloatArray? {
+        var r1: SensorEventData? = null
+        var r2: SensorEventData? = null
+
+        for (i in 0 until queue.size - 1) {
+            if (queue[i].timestampNs <= targetNs && queue[i + 1].timestampNs >= targetNs) {
+                r1 = queue[i]
+                r2 = queue[i + 1]
+                break
+            }
+        }
+
+        if (r1 == null || r2 == null) return null
+
+        val t1 = r1.timestampNs
+        val t2 = r2.timestampNs
+        val diff = t2 - t1
+        val fraction = if (diff > 0) (targetNs - t1).toFloat() / diff else 0f
+
+        val res = FloatArray(r1.values.size)
+        for (i in res.indices) {
+            res[i] = r1.values[i] + fraction * (r2.values[i] - r1.values[i])
+        }
+        return res
     }
 
     private fun processResampledData(
         linAx: Float, linAy: Float, linAz: Float,
         gx: Float, gy: Float, gz: Float,
+        grx: Float, gry: Float, grz: Float,
         speed: Float, timestamp: Long
     ) {
-        val (grx, gry, grz) = lastGravity
 
         // 1. Normalize Gravity
         var gMag = sqrt(grx * grx + gry * gry + grz * grz)
@@ -279,7 +328,12 @@ class SensorFusionProcessor {
         }
     }
 
+    var lastPipelineStartTime: Long = 0L
+
     private fun runInferencePipeline() {
+        // Catat waktu mulai preprocessing
+        lastPipelineStartTime = System.nanoTime()
+
         // Retrospective calculation of complex rolling features to match Python exactly:
         // 4. Crest Factor (rolling window size 10, center=True)
         val crestFactor = FloatArray(WINDOW_SIZE)
@@ -445,9 +499,9 @@ class SensorFusionProcessor {
             }
         }
 
-        Log.d(TAG, ">>> TRIGGER INFERENCE (SCALED) | aVertScaled[0..2]=[${tensorData[0]}, ${tensorData[1]}, ${tensorData[2]}] | speedScaled[0]=${tensorData[2 * WINDOW_SIZE]}")
+        // Log.d(TAG, ">>> TRIGGER INFERENCE (SCALED) | aVertScaled[0..2]=[${tensorData[0]}, ${tensorData[1]}, ${tensorData[2]}] | speedScaled[0]=${tensorData[2 * WINDOW_SIZE]}")
 
         val emitted = _inferenceTrigger.tryEmit(tensorData)
-        Log.d(TAG, ">>> tryEmit result: $emitted (subscribers=${_inferenceTrigger.subscriptionCount.value})")
+        // Log.d(TAG, ">>> tryEmit result: $emitted (subscribers=${_inferenceTrigger.subscriptionCount.value})")
     }
 }

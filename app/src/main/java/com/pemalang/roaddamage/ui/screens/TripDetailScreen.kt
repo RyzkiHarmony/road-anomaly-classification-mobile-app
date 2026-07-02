@@ -42,12 +42,19 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
 
 import com.pemalang.roaddamage.ui.theme.*
 
@@ -143,7 +150,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
 
             if (trip != null) {
                 // Map Section
-                Box(modifier = Modifier.fillMaxWidth().height(300.dp)) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     MapSection(
                             ctx = ctx,
                             points = ui.points,
@@ -164,7 +171,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                     }
                 }
 
-                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     // G-Force Monitor
                     Card(
                             colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -273,7 +280,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                                 ) {
                                     Text(
                                             "Unggah Sekarang",
-                                            color = Color.White,
+                                            color = Color(0xFFFAFAFA),
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold
                                     )
@@ -320,7 +327,7 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ErrorColor)
                     ) {
-                        Text("Hapus", color = Color.White)
+                        Text("Hapus", color = Color(0xFFFAFAFA))
                     }
                 },
                 dismissButton = {
@@ -379,8 +386,8 @@ fun DetailStatCard(label: String, value: String, unit: String, highlight: Boolea
     }
 }
 
-private fun markerDrawable(ctx: Context, color: Int): BitmapDrawable {
-    val size = 32
+private fun markerBitmapDescriptor(color: Int): com.google.android.gms.maps.model.BitmapDescriptor {
+    val size = 48
     val bm = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val c = Canvas(bm)
     val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -389,10 +396,10 @@ private fun markerDrawable(ctx: Context, color: Int): BitmapDrawable {
     val r = RectF(4f, 4f, size - 4f, size - 4f)
     c.drawOval(r, p)
     p.style = Paint.Style.STROKE
-    p.strokeWidth = 3f
-    p.color = AndroidColor.WHITE
+    p.strokeWidth = 4f
+    p.color = AndroidColor.parseColor("#FAFAFA")
     c.drawOval(r, p)
-    return BitmapDrawable(ctx.resources, bm)
+    return BitmapDescriptorFactory.fromBitmap(bm)
 }
 
 @Composable
@@ -402,85 +409,75 @@ private fun MapSection(
         anomalyEvents: List<AnomalyEvent> = emptyList(),
         onAnomalyClick: (AnomalyEvent) -> Unit
 ) {
-    val appCtx = ctx.applicationContext
-    val base = remember { java.io.File(appCtx.cacheDir, "osmdroid") }
-    val tiles = remember { java.io.File(base, "tiles") }
-    LaunchedEffect(Unit) {
-        if (!base.exists()) base.mkdirs()
-        if (!tiles.exists()) tiles.mkdirs()
-        Configuration.getInstance().osmdroidBasePath = base
-        Configuration.getInstance().osmdroidTileCache = tiles
-        Configuration.getInstance().userAgentValue = appCtx.packageName
-    }
-    val mapView = remember {
-        MapView(ctx).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            isTilesScaledToDpi = true
-            // Light theme: NO color filter applied — standard map tiles
+    val latLngPoints = remember(points) { points.map { LatLng(it.first, it.second) } }
+    
+    val cameraPositionState = rememberCameraPositionState {
+        if (latLngPoints.isNotEmpty()) {
+            position = CameraPosition.fromLatLngZoom(latLngPoints.first(), 15f)
         }
     }
-    androidx.compose.ui.viewinterop.AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { mapView },
-            update = {
-                mapView.overlays.clear()
-                if (points.isNotEmpty()) {
-                    val geoPoints = points.map { GeoPoint(it.first, it.second) }
-                    val polyline =
-                            Polyline().apply {
-                                outlinePaint.color = AndroidColor.parseColor("#0F5238") // Forest Green (Primary)
-                                outlinePaint.strokeWidth = 8f
-                                setPoints(geoPoints)
-                            }
-                    mapView.overlays.add(polyline)
-                    val startMarker =
-                            Marker(mapView).apply {
-                                position = geoPoints.first()
-                                title = "Start"
-                                icon = markerDrawable(ctx, AndroidColor.parseColor("#0F5238"))
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                            }
-                    val endMarker =
-                            Marker(mapView).apply {
-                                position = geoPoints.last()
-                                title = "End"
-                                icon = markerDrawable(ctx, AndroidColor.parseColor("#D32F2F")) // Vibrant Red
-                                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                            }
-                    mapView.overlays.add(startMarker)
-                    mapView.overlays.add(endMarker)
-                    
-                    // Add anomaly markers
-                    anomalyEvents.forEach { event ->
-                        val marker = Marker(mapView).apply {
-                            position = GeoPoint(event.latitude, event.longitude)
-                            title = null
-                            snippet = null
-                            val color = if (event.anomalyType == "Pothole") {
-                                AndroidColor.parseColor("#D32F2F") // Vibrant Red for Pothole
-                            } else {
-                                AndroidColor.parseColor("#EF6C00") // Vibrant Orange for Speed Bump
-                            }
-                            icon = markerDrawable(ctx, color)
-                            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                            setOnMarkerClickListener { _, _ ->
-                                onAnomalyClick(event)
-                                true
-                            }
-                        }
-                        mapView.overlays.add(marker)
-                    }
 
-                    // Center map
-                    if (geoPoints.isNotEmpty()) {
-                        val boundingBox = org.osmdroid.util.BoundingBox.fromGeoPoints(geoPoints)
-                        // We need to post this to run after layout
-                        mapView.post { mapView.zoomToBoundingBox(boundingBox, true, 100) }
-                    }
-                }
+    LaunchedEffect(latLngPoints) {
+        if (latLngPoints.isNotEmpty()) {
+            val boundsBuilder = LatLngBounds.builder()
+            latLngPoints.forEach { boundsBuilder.include(it) }
+            val bounds = boundsBuilder.build()
+            try {
+                cameraPositionState.animate(
+                    update = CameraUpdateFactory.newLatLngBounds(bounds, 100),
+                    durationMs = 1000
+                )
+            } catch (e: Exception) {
+                // Ignore if layout is not ready yet
             }
-    )
+        }
+    }
+
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(isMyLocationEnabled = false),
+        uiSettings = MapUiSettings(zoomControlsEnabled = false, mapToolbarEnabled = false)
+    ) {
+        if (latLngPoints.isNotEmpty()) {
+            Polyline(
+                points = latLngPoints,
+                color = Color(0xFF0F5238), // Forest Green
+                width = 12f
+            )
+
+            Marker(
+                state = MarkerState(position = latLngPoints.first()),
+                title = "Start",
+                icon = markerBitmapDescriptor(AndroidColor.parseColor("#0F5238")),
+                anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
+            )
+
+            Marker(
+                state = MarkerState(position = latLngPoints.last()),
+                title = "End",
+                icon = markerBitmapDescriptor(AndroidColor.parseColor("#D32F2F")), // Vibrant Red
+                anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f)
+            )
+
+            anomalyEvents.forEach { event ->
+                val color = if (event.anomalyType == "Pothole") {
+                    AndroidColor.parseColor("#D32F2F") // Vibrant Red for Pothole
+                } else {
+                    AndroidColor.parseColor("#EF6C00") // Vibrant Orange for Speed Bump
+                }
+                Marker(
+                    state = MarkerState(position = LatLng(event.latitude, event.longitude)),
+                    icon = markerBitmapDescriptor(color),
+                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                    onClick = {
+                        onAnomalyClick(event)
+                        true
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -712,7 +709,7 @@ private fun AnomalyDetailDialog(
                 ) {
                     Text(
                         text = "Tutup",
-                        color = Color.White,
+                        color = Color(0xFFFAFAFA),
                         fontWeight = FontWeight.SemiBold
                     )
                 }

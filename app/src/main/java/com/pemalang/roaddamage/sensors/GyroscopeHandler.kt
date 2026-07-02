@@ -7,12 +7,14 @@ import android.hardware.SensorManager
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
+import com.pemalang.roaddamage.model.SensorEventData
+
 /**
  * Handles Gyroscope sensor registration, lifecycle, and data emission.
  *
- * Emits raw rotational velocity (rad/s) as a [FloatArray] of `[x, y, z]`
- * via the [readings] SharedFlow.  The caller is responsible for calling
- * [start] and [stop] to manage the sensor lifecycle.
+ * Emits raw rotational velocity (rad/s) as a [SensorEventData] containing
+ * timestamp and `[x, y, z]` via the [readings] SharedFlow.
+ * The caller is responsible for calling [start] and [stop] to manage the sensor lifecycle.
  *
  * Design note: mirrors [AccelerometerHandler] intentionally so both sensor
  * handlers share the same contract, making them easily interchangeable
@@ -27,10 +29,10 @@ class GyroscopeHandler(
 ) : SensorEventListener {
 
     /**
-     * Stream of gyroscope readings.  Each emission is a [FloatArray]
-     * containing `[rotX, rotY, rotZ]` in rad/s.
+     * Stream of gyroscope readings.  Each emission is a [SensorEventData]
+     * containing timestamp and `[rotX, rotY, rotZ]` in rad/s.
      */
-    val readings = MutableSharedFlow<FloatArray>(
+    val readings = MutableSharedFlow<SensorEventData>(
         replay = 0,
         extraBufferCapacity = 64,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -80,7 +82,7 @@ class GyroscopeHandler(
         // Emit raw rotational velocity — no smoothing applied here.
         // Smoothing (if needed) should be done at the domain/ML layer,
         // keeping the sensor handler as a pure data source.
-        readings.tryEmit(floatArrayOf(event.values[0], event.values[1], event.values[2]))
+        readings.tryEmit(SensorEventData(event.timestamp, floatArrayOf(event.values[0], event.values[1], event.values[2])))
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

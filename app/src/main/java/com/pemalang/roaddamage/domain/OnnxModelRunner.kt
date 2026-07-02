@@ -37,7 +37,7 @@ class OnnxModelRunner(private val context: Context) {
     }
 
     suspend fun predict(flatData: FloatArray): FloatArray = withContext(Dispatchers.Default) {
-        Log.d(TAG, "predict() called with ${flatData.size} floats")
+        // Log.d(TAG, "predict() called with ${flatData.size} floats")
         val env = ortEnvironment ?: throw IllegalStateException("ONNX Environment not initialized")
         val session = ortSession ?: throw IllegalStateException("ONNX Session not initialized")
 
@@ -65,7 +65,7 @@ class OnnxModelRunner(private val context: Context) {
                 outFloatBuffer.get(logits)
                 
                 val probs = softmax(logits)
-                Log.d(TAG, "Prediction: logits=[${logits[0]}, ${logits[1]}, ${logits[2]}] -> probs=[${probs[0]}, ${probs[1]}, ${probs[2]}]")
+                // Log.d(TAG, "Prediction: logits=[${logits[0]}, ${logits[1]}, ${logits[2]}] -> probs=[${probs[0]}, ${probs[1]}, ${probs[2]}]")
                 return@withContext probs
             } finally {
                 result.close()

@@ -142,13 +142,13 @@ fun ActiveSessionScreen(
             val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
 
             val bgColor = when {
-                probPothole >= 0.75f -> md_theme_StatusRed
-                probSpeedBump >= 0.7f -> md_theme_StatusOrange
+                probPothole >= 0.55f -> md_theme_StatusRed
+                probSpeedBump >= 0.65f -> md_theme_StatusOrange
                 else -> md_theme_StatusGreen
             }
             val textLabel = when {
-                probPothole >= 0.75f -> "LUBANG TERDETEKSI"
-                probSpeedBump >= 0.7f -> "POLISI TIDUR"
+                probPothole >= 0.6f -> "LUBANG TERDETEKSI"
+                probSpeedBump >= 0.6f -> "POLISI TIDUR"
                 else -> "JALAN NORMAL"
             }
             val subText = "Pothole: ${String.format("%.1f%%", probPothole * 100)} | Bump: ${String.format("%.1f%%", probSpeedBump * 100)}"
@@ -162,14 +162,14 @@ fun ActiveSessionScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             textLabel,
-                            color = Color.White,
+                            color = Color(0xFFFAFAFA),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
                             subText,
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = Color(0xFFFAFAFA).copy(alpha = 0.9f),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -330,11 +330,11 @@ fun ActiveSessionScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Icon(Icons.Default.Stop, null, tint = Color.White)
+                Icon(Icons.Default.Stop, null, tint = Color(0xFFFAFAFA))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "STOP RECORDING",
-                    color = Color.White,
+                    color = Color(0xFFFAFAFA),
                     fontWeight = FontWeight.SemiBold
                 )
             }

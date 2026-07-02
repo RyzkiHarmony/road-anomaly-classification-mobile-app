@@ -282,7 +282,7 @@ fun TripListScreen(
                                         Icon(
                                                 Icons.Default.Delete,
                                                 contentDescription = "Delete",
-                                                tint = Color.White
+                                                tint = Color(0xFFFAFAFA)
                                         )
                                     }
                                 },
@@ -304,7 +304,7 @@ fun FilterButton(text: String, selected: Boolean, onClick: () -> Unit) {
             colors =
                     ButtonDefaults.buttonColors(
                             containerColor = if (selected) Primary else SurfaceContainer,
-                            contentColor = if (selected) Color.White else OnSurfaceVariant
+                            contentColor = if (selected) Color(0xFFFAFAFA) else OnSurfaceVariant
                     ),
             shape = RoundedCornerShape(20.dp),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

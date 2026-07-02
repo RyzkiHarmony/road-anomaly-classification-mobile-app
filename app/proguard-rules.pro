@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- ONNX RUNTIME JNI RULES ---
+# Mencegah R8/Proguard dari menghapus atau mengubah nama class Java yang dipanggil oleh C++ JNI ONNX Runtime
+-keep class ai.onnxruntime.** { *; }

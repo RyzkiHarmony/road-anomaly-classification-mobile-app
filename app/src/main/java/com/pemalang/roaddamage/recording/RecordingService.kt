@@ -161,8 +161,6 @@ class RecordingService : Service() {
 
         val sManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val samplingHz = runBlocking { userPrefs.getSamplingRateHz() }
-        // Request 200Hz (5000us) from hardware to prevent hardware bottlenecks, 
-        // our software throttle will cleanly downsample this to exactly 100Hz.
         val samplingUs = 5000
         val gpsInterval = runBlocking { userPrefs.getGpsIntervalSec() }
         try {
@@ -216,24 +214,22 @@ class RecordingService : Service() {
                         FirebaseCrashlytics.getInstance().recordException(e)
                     }
 
-                    // Collect gyroscope readings into a snapshot variable.
-                    // This runs concurrently; the accelerometer collect-block
-                    // reads latestGyro on each tick for sensor fusion.
+                    // Pipe raw sensors directly to SensorFusionProcessor for independent interpolation
                     launch {
-                        gyro?.readings?.collect { arr ->
-                            latestGyro = arr
+                        gyro?.readings?.collect { data ->
+                            fusionProcessor?.addGyro(data)
                         }
                     }
 
                     launch {
-                        linearAccel?.readings?.collect { arr ->
-                            latestLinearAccel = arr
+                        linearAccel?.readings?.collect { data ->
+                            fusionProcessor?.addLinearAccel(data)
                         }
                     }
 
                     launch {
-                        gravity?.readings?.collect { arr ->
-                            latestGravity = arr
+                        gravity?.readings?.collect { data ->
+                            fusionProcessor?.addGravity(data)
                         }
                     }
 
@@ -263,8 +259,11 @@ class RecordingService : Service() {
                         }
                     }
 
-                    gps?.locations?.collect { loc ->
-                        latestLocation = loc
+                    launch {
+                        gps?.locations?.collect { loc ->
+                            latestLocation = loc
+                            fusionProcessor?.updateSpeed(loc.speed)
+                        }
                     }
                 }
                 
@@ -272,24 +271,27 @@ class RecordingService : Service() {
         scope?.launch {
             Log.d(TAG, "Starting inferenceTrigger collector...")
             fusionProcessor?.inferenceTrigger?.collect { tensorData ->
-                Log.d(TAG, "<<< Received inference trigger (${tensorData.size} floats)")
+                // Log.d(TAG, "<<< Received inference trigger (${tensorData.size} floats)")
                 try {
                     val probs = onnxRunner?.predict(tensorData)
+                    val endTime = System.nanoTime()
+                    
                     if (probs != null) {
-                        Log.d(TAG, "<<< ONNX Result: None=${probs[0]}, Pothole=${probs[1]}, SpeedBump=${probs[2]}")
+                        val startTime = fusionProcessor?.lastPipelineStartTime ?: endTime
+                        val latencyMs = (endTime - startTime) / 1_000_000.0
+                        
+                        Log.d(TAG, "===============================================")
+                        Log.d(TAG, "END-TO-END LATENCY (Preproc + ONNX): $latencyMs ms")
+                        Log.d(TAG, "===============================================")
+                        
+                        // Log.d(TAG, "<<< ONNX Result: None=${probs[0]}, Pothole=${probs[1]}, SpeedBump=${probs[2]}")
                         repository.updateAnomalyProbabilities(probs)
                         
                         // probs: [0]=Non-Event, [1]=Pothole, [2]=SpeedBump
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
-                        
-                        // Threshold di bawah ini adalah Recall-Maximizing Operating Point (bukan F1-optimal).
-                        // Pothole: 0.3939 (turun dari default 0.5) → Recall naik 68%→76%, Precision turun 52%→45%, F1 turun 0.59→0.57
-                        // Speed Bump: 0.5070 (sedikit di atas default 0.5) → F1 naik 0.769→0.796
-                        // Keputusan ini domain-driven: false negative (miss) > false positive (alarm) untuk keselamatan jalan.
-                        // Threshold dipilih dari kurva Precision-Recall pada OOF validation, bukan test set.
-                        val isPotholeDetected = potholeProb >= 0.3939f
-                        val isSpeedBumpDetected = speedBumpProb >= 0.5070f
+                        val isPotholeDetected = potholeProb >= 0.57f
+                        val isSpeedBumpDetected = speedBumpProb >= 0.61f
                         
                         if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()
@@ -318,95 +320,22 @@ class RecordingService : Service() {
             }
         }
 
-        // Software Throttle to enforce exactly `samplingHz`
-        val targetDelayMs = 1000L / samplingHz
-        var lastAcceptedTime = 0L
-
+        // Collect fully fused and synchronized data from SensorFusionProcessor
         scope?.launch {
-            accel?.readings?.collect { arr ->
-                val now = System.currentTimeMillis()
-                if (lastAcceptedTime == 0L) {
-                    lastAcceptedTime = now
-                } else if (now - lastAcceptedTime < targetDelayMs - 3) {
-                    return@collect // Skip sample to maintain exactly target Hz
-                } else {
-                    lastAcceptedTime += targetDelayMs
-                    if (now - lastAcceptedTime > targetDelayMs) {
-                        lastAcceptedTime = now // Catch up if there was a large system lag
-                    }
-                }
-
-                val x = arr[0]
-                val y = arr[1]
-                val z = arr[2]
-                val m = arr[3]
-
-                // Snapshot latest gyroscope values (rad/s)
-                val gyroSnapshot = latestGyro
-                val gx = gyroSnapshot[0]
-                val gy = gyroSnapshot[1]
-                val gz = gyroSnapshot[2]
-
-                // Snapshot latest linear acceleration & gravity values
-                val linSnapshot = latestLinearAccel
-                val lax = linSnapshot[0]
-                val lay = linSnapshot[1]
-                val laz = linSnapshot[2]
-
-                val gravSnapshot = latestGravity
-                val grx = gravSnapshot[0]
-                val gry = gravSnapshot[1]
-                val grz = gravSnapshot[2]
-
+            fusionProcessor?.fusedSensorStream?.collect { reading ->
                 val loc = latestLocation
-                val lat = loc?.latitude ?: Double.NaN
-                val lon = loc?.longitude ?: Double.NaN
-                val alt = loc?.altitude ?: Double.NaN
-                val spd = loc?.speed ?: Float.NaN
-                val acc = loc?.accuracy ?: Float.NaN
-                val brg = loc?.bearing ?: Float.NaN
-                val reading =
-                        SensorReading(
-                                timestamp = System.currentTimeMillis(),
-                                accelX = x,
-                                accelY = y,
-                                accelZ = z,
-                                magnitude = m,
-                                gyroX = gx,
-                                gyroY = gy,
-                                gyroZ = gz,
-                                linearAccelX = lax,
-                                linearAccelY = lay,
-                                linearAccelZ = laz,
-                                gravityX = grx,
-                                gravityY = gry,
-                                gravityZ = grz,
-                                latitude = lat,
-                                longitude = lon,
-                                altitude = alt,
-                                speed = spd,
-                                accuracy = acc,
-                                bearing = brg,
-                                probNone = repository.anomalyProbabilities.value[0],
-                                probPothole = repository.anomalyProbabilities.value[1],
-                                probSpeedbump = repository.anomalyProbabilities.value[2]
-                        )
-
-                // Update Sensor Fusion Processor
-                if (!grx.isNaN() && !gry.isNaN() && !grz.isNaN()) {
-                    fusionProcessor?.updateGravity(grx, gry, grz)
-                }
-                if (!gx.isNaN() && !gy.isNaN() && !gz.isNaN()) {
-                    fusionProcessor?.updateGyro(gx, gy, gz)
-                }
-                if (!spd.isNaN()) {
-                    fusionProcessor?.updateSpeed(spd)
-                }
-                if (!lax.isNaN() && !lay.isNaN() && !laz.isNaN()) {
-                    fusionProcessor?.processLinearAcceleration(lax, lay, laz, System.currentTimeMillis())
-                }
-
-                repository.appendReading(reading)
+                val finalReading = reading.copy(
+                    latitude = loc?.latitude ?: Double.NaN,
+                    longitude = loc?.longitude ?: Double.NaN,
+                    altitude = loc?.altitude ?: Double.NaN,
+                    speed = loc?.speed ?: Float.NaN,
+                    accuracy = loc?.accuracy ?: Float.NaN,
+                    bearing = loc?.bearing ?: Float.NaN,
+                    probNone = repository.anomalyProbabilities.value[0],
+                    probPothole = repository.anomalyProbabilities.value[1],
+                    probSpeedbump = repository.anomalyProbabilities.value[2]
+                )
+                repository.appendReading(finalReading)
             }
         }
     }
