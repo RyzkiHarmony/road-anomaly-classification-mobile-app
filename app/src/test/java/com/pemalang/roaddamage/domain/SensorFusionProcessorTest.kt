@@ -64,7 +64,7 @@ class SensorFusionProcessorTest {
         feedSensors(processor, 0f, 0f, 10f, 0f, 0f, 0f, 0f, 0f, 9.81f, 200 * 10_000_000L)
         
         assertEquals("Should emit exactly once when WINDOW_SIZE is reached", 1, emittedTensors)
-        assertEquals("Tensor should have exactly 3600 floats (18 channels * 200)", 3600, lastTensor?.size)
+        assertEquals("Tensor should have exactly 1400 floats (7 channels * 200)", 1400, lastTensor?.size)
         
         // 3. Feed 49 more samples (STRIDE is 50, so it shouldn't emit yet)
         for (i in 1..49) {

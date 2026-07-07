@@ -138,17 +138,23 @@ fun ActiveSessionScreen(
             Spacer(Modifier.height(16.dp))
 
             // ── Detection Dashboard (muted colors per DESIGN.md) ──
+            val probNone = anomalyProbabilities.getOrNull(0) ?: 1f
             val probPothole = anomalyProbabilities.getOrNull(1) ?: 0f
             val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
 
+            val CONFIDENCE_THRESHOLD = 0.60f
+            val maxProb = maxOf(probNone, maxOf(probPothole, probSpeedBump))
+            val isPotholeDetected = (maxProb == probPothole) && (probPothole >= CONFIDENCE_THRESHOLD)
+            val isSpeedBumpDetected = (maxProb == probSpeedBump) && (probSpeedBump >= CONFIDENCE_THRESHOLD)
+
             val bgColor = when {
-                probPothole >= 0.55f -> md_theme_StatusRed
-                probSpeedBump >= 0.65f -> md_theme_StatusOrange
+                isPotholeDetected -> md_theme_StatusRed
+                isSpeedBumpDetected -> md_theme_StatusOrange
                 else -> md_theme_StatusGreen
             }
             val textLabel = when {
-                probPothole >= 0.6f -> "LUBANG TERDETEKSI"
-                probSpeedBump >= 0.6f -> "POLISI TIDUR"
+                isPotholeDetected -> "LUBANG TERDETEKSI"
+                isSpeedBumpDetected -> "POLISI TIDUR"
                 else -> "JALAN NORMAL"
             }
             val subText = "Pothole: ${String.format("%.1f%%", probPothole * 100)} | Bump: ${String.format("%.1f%%", probSpeedBump * 100)}"

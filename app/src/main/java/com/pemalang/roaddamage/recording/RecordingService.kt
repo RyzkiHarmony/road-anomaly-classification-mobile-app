@@ -288,18 +288,24 @@ class RecordingService : Service() {
                         repository.updateAnomalyProbabilities(probs)
                         
                         // probs: [0]=Non-Event, [1]=Pothole, [2]=SpeedBump
+                        val noneProb = probs[0]
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
-                        val isPotholeDetected = potholeProb >= 0.57f
-                        val isSpeedBumpDetected = speedBumpProb >= 0.61f
+                        
+                        // Argmax with Confidence Threshold
+                        // Mencegah False Positives (Spam Alert) di permukaan jalan kerikil
+                        val CONFIDENCE_THRESHOLD = 0.60f
+                        val maxProb = maxOf(noneProb, maxOf(potholeProb, speedBumpProb))
+                        val isPotholeDetected = (maxProb == potholeProb) && (potholeProb >= CONFIDENCE_THRESHOLD)
+                        val isSpeedBumpDetected = (maxProb == speedBumpProb) && (speedBumpProb >= CONFIDENCE_THRESHOLD)
                         
                         if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()
                             if (now - lastTriggerTime > COOLDOWN_MS) {
                                 lastTriggerTime = now
                                 repository.incrementEventCount()
-                                val type = if (potholeProb > speedBumpProb) "Pothole" else "Speed Bump"
-                                val conf = if (potholeProb > speedBumpProb) potholeProb else speedBumpProb
+                                val type = if (isPotholeDetected) "Pothole" else "Speed Bump"
+                                val conf = maxProb
                                 val loc = latestLocation
                                 if (loc != null) {
                                     repository.saveAnomalyEvent(now, loc.latitude, loc.longitude, type, conf)

@@ -30,7 +30,13 @@ class OnnxModelRunner(private val context: Context) {
         }
         
         val options = OrtSession.SessionOptions()
-        // Anda bisa mengaktifkan XNNPACK jika tersedia untuk optimasi ekstra
+        // Aktifkan NNAPI untuk menekan latensi inference di device Android
+        try {
+            options.addNnapi()
+            Log.d(TAG, "NNAPI execution provider enabled.")
+        } catch (e: Exception) {
+            Log.w(TAG, "NNAPI not available, fallback to CPU.")
+        }
         
         ortSession = ortEnvironment?.createSession(modelBytes, options)
         Log.d(TAG, "Model initialized successfully! Session=$ortSession")
@@ -41,8 +47,8 @@ class OnnxModelRunner(private val context: Context) {
         val env = ortEnvironment ?: throw IllegalStateException("ONNX Environment not initialized")
         val session = ortSession ?: throw IllegalStateException("ONNX Session not initialized")
 
-        // Bentuk input tensor: [Batch=1, Channels=18, Length=200]
-        val shape = longArrayOf(1, 18, 200)
+        // Bentuk input tensor: [Batch=1, Channels=7, Length=200]
+        val shape = longArrayOf(1, 7, 200)
         
         val byteBuffer = java.nio.ByteBuffer.allocateDirect(flatData.size * 4)
         byteBuffer.order(java.nio.ByteOrder.nativeOrder())
@@ -64,7 +70,7 @@ class OnnxModelRunner(private val context: Context) {
                 val logits = FloatArray(3)
                 outFloatBuffer.get(logits)
                 
-                val probs = softmax(logits)
+                val probs = sigmoid(logits)
                 // Log.d(TAG, "Prediction: logits=[${logits[0]}, ${logits[1]}, ${logits[2]}] -> probs=[${probs[0]}, ${probs[1]}, ${probs[2]}]")
                 return@withContext probs
             } finally {
@@ -75,24 +81,12 @@ class OnnxModelRunner(private val context: Context) {
         }
     }
 
-    private fun softmax(logits: FloatArray): FloatArray {
-        var maxLogit = Float.NEGATIVE_INFINITY
-        for (l in logits) {
-            if (l > maxLogit) maxLogit = l
-        }
-        
-        var sumExp = 0f
-        val expLogits = FloatArray(logits.size)
+    private fun sigmoid(logits: FloatArray): FloatArray {
+        val probs = FloatArray(logits.size)
         for (i in logits.indices) {
-            val e = exp((logits[i] - maxLogit).toDouble()).toFloat()
-            expLogits[i] = e
-            sumExp += e
+            probs[i] = (1.0 / (1.0 + exp(-logits[i].toDouble()))).toFloat()
         }
-        
-        for (i in logits.indices) {
-            expLogits[i] = expLogits[i] / sumExp
-        }
-        return expLogits
+        return probs
     }
 
     fun close() {
