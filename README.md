@@ -9,8 +9,9 @@
   - Ringkasan statistik *real-time*: Total Perjalanan, Total Jarak, Status GPS, Status Sensor, dan antrean *Upload Tertunda*.
 - **Real-time On-Device Inference (1D-CNN)**:
   - Deteksi anomali jalan (Lubang / *Pothole* dan Polisi Tidur / *Speed Bump*) secara lokal (*Edge AI*) menggunakan model 1D-CNN.
-  - Model inferensi dieksekusi secara *real-time* via **ONNX Runtime Android** dengan latensi sangat rendah.
-  - Integrasi sensor fusion dinamis di perangkat sebelum data diumpankan ke model.
+  - Model inferensi dieksekusi secara *real-time* via **ONNX Runtime Android** (Hardware Accelerated via NNAPI) dengan latensi sangat rendah.
+  - **Sinkronisasi Algoritma 100 Hz**: *Sensor fusion* secara agresif me-reset antrean data (*buffer*) jika perangkat mengalami jeda/*lag* di atas 50ms, yang dijamin mencegah prediksi halusinasi. Z-Score *instance-level scaling* diterapkan persis 1-to-1 dengan _pipeline_ PyTorch asli.
+  - **Threshold Optimizaton**: Mematuhi parameter *Default Argmax* (`0.50`) tanpa Threshold *precision_recall_curve* modifikasi, menjamin keaslian distribusi 1D-CNN.
 - **High-Frequency Sensor Logging**:
   - Merekam data **Accelerometer** (X, Y, Z) dan **Gyroscope** (X, Y, Z) secara bersamaan.
   - Menghitung *G-Force* / Magnitudo Total secara otomatis.

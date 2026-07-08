@@ -294,7 +294,7 @@ class RecordingService : Service() {
                         
                         // Argmax with Confidence Threshold
                         // Mencegah False Positives (Spam Alert) di permukaan jalan kerikil
-                        val CONFIDENCE_THRESHOLD = 0.60f
+                        val CONFIDENCE_THRESHOLD = 0.50f
                         val maxProb = maxOf(noneProb, maxOf(potholeProb, speedBumpProb))
                         val isPotholeDetected = (maxProb == potholeProb) && (potholeProb >= CONFIDENCE_THRESHOLD)
                         val isSpeedBumpDetected = (maxProb == speedBumpProb) && (speedBumpProb >= CONFIDENCE_THRESHOLD)
