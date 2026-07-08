@@ -216,6 +216,12 @@ class RecordingService : Service() {
 
                     // Pipe raw sensors directly to SensorFusionProcessor for independent interpolation
                     launch {
+                        accel?.readings?.collect { data ->
+                            fusionProcessor?.addAccel(data)
+                        }
+                    }
+
+                    launch {
                         gyro?.readings?.collect { data ->
                             fusionProcessor?.addGyro(data)
                         }

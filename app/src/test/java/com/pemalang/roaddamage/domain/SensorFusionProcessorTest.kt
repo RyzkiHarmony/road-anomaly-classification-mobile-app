@@ -24,6 +24,7 @@ class SensorFusionProcessorTest {
     }
 
     private fun feedSensors(processor: SensorFusionProcessor, ax: Float, ay: Float, az: Float, gx: Float, gy: Float, gz: Float, grx: Float, gry: Float, grz: Float, tsNs: Long) {
+        processor.addAccel(SensorEventData(tsNs, floatArrayOf(ax + grx, ay + gry, az + grz)))
         processor.addLinearAccel(SensorEventData(tsNs, floatArrayOf(ax, ay, az)))
         processor.addGyro(SensorEventData(tsNs, floatArrayOf(gx, gy, gz)))
         processor.addGravity(SensorEventData(tsNs, floatArrayOf(grx, gry, grz)))

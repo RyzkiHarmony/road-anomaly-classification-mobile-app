@@ -55,6 +55,7 @@ class SensorFusionProcessor {
     private var samplesSinceLastInference = 0
 
     // Queue for raw samples waiting for time-based resampling (100Hz)
+    private val accelQueue = ArrayList<SensorEventData>()
     private val linAccelQueue = ArrayList<SensorEventData>()
     private val gyroQueue = ArrayList<SensorEventData>()
     private val gravityQueue = ArrayList<SensorEventData>()
@@ -86,6 +87,12 @@ class SensorFusionProcessor {
     }
 
     @Synchronized
+    fun addAccel(data: SensorEventData) {
+        accelQueue.add(data)
+        processQueues()
+    }
+
+    @Synchronized
     fun addLinearAccel(data: SensorEventData) {
         linAccelQueue.add(data)
         processQueues()
@@ -104,37 +111,41 @@ class SensorFusionProcessor {
     }
 
     private fun processQueues() {
-        if (linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) return
+        if (accelQueue.isEmpty() || linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) return
 
         if (nextResampleTimestampNs == -1L) {
+            val tAcc = accelQueue[0].timestampNs
             val tLin = linAccelQueue[0].timestampNs
             val tGyr = gyroQueue[0].timestampNs
             val tGra = gravityQueue[0].timestampNs
-            nextResampleTimestampNs = maxOf(tLin, maxOf(tGyr, tGra))
+            nextResampleTimestampNs = maxOf(tAcc, maxOf(tLin, maxOf(tGyr, tGra)))
         }
 
         while (true) {
-            if (linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) break
+            if (accelQueue.isEmpty() || linAccelQueue.isEmpty() || gyroQueue.isEmpty() || gravityQueue.isEmpty()) break
 
+            val lastAcc = accelQueue.last().timestampNs
             val lastLin = linAccelQueue.last().timestampNs
             val lastGyr = gyroQueue.last().timestampNs
             val lastGra = gravityQueue.last().timestampNs
 
-            if (lastLin < nextResampleTimestampNs || lastGyr < nextResampleTimestampNs || lastGra < nextResampleTimestampNs) {
+            if (lastAcc < nextResampleTimestampNs || lastLin < nextResampleTimestampNs || lastGyr < nextResampleTimestampNs || lastGra < nextResampleTimestampNs) {
                 break
             }
 
+            val accInterp = interpolate(accelQueue, nextResampleTimestampNs)
             val linInterp = interpolate(linAccelQueue, nextResampleTimestampNs)
             val gyrInterp = interpolate(gyroQueue, nextResampleTimestampNs)
             val graInterp = interpolate(gravityQueue, nextResampleTimestampNs)
 
-            if (linInterp != null && gyrInterp != null && graInterp != null) {
-                if (linInterp.isEmpty() || gyrInterp.isEmpty() || graInterp.isEmpty()) {
+            if (accInterp != null && linInterp != null && gyrInterp != null && graInterp != null) {
+                if (accInterp.isEmpty() || linInterp.isEmpty() || gyrInterp.isEmpty() || graInterp.isEmpty()) {
                     // Gap > 50ms detected! Reset window buffer to prevent hallucinated predictions.
                     bufferIndex = 0
                     samplesSinceLastInference = 0
                 } else {
                     val cutoff = nextResampleTimestampNs - 4_000_000_000L
+                    pruneQueue(accelQueue, cutoff)
                     pruneQueue(linAccelQueue, cutoff)
                     pruneQueue(gyroQueue, cutoff)
                     pruneQueue(gravityQueue, cutoff)
@@ -143,9 +154,9 @@ class SensorFusionProcessor {
     
                     val reading = SensorReading(
                         timestamp = timestampMs,
-                        accelX = linInterp[0] + graInterp[0],
-                        accelY = linInterp[1] + graInterp[1],
-                        accelZ = linInterp[2] + graInterp[2],
+                        accelX = accInterp[0],
+                        accelY = accInterp[1],
+                        accelZ = accInterp[2],
                         magnitude = 0f,
                         gyroX = gyrInterp[0],
                         gyroY = gyrInterp[1],
@@ -162,6 +173,7 @@ class SensorFusionProcessor {
                     _fusedSensorStream.tryEmit(reading)
     
                     processResampledData(
+                        accInterp[0], accInterp[1], accInterp[2],
                         linInterp[0], linInterp[1], linInterp[2],
                         gyrInterp[0], gyrInterp[1], gyrInterp[2],
                         graInterp[0], graInterp[1], graInterp[2],
@@ -213,16 +225,17 @@ class SensorFusionProcessor {
     }
 
     private fun processResampledData(
+        ax: Float, ay: Float, az: Float,
         linAx: Float, linAy: Float, linAz: Float,
         gx: Float, gy: Float, gz: Float,
         grx: Float, gry: Float, grz: Float,
         speed: Float, timestamp: Long
     ) {
 
-        // Raw features
-        val totalAx = linAx + grx
-        val totalAy = linAy + gry
-        val totalAz = linAz + grz
+        // Raw features from direct TYPE_ACCELEROMETER
+        val totalAx = ax
+        val totalAy = ay
+        val totalAz = az
 
         // 5. Masukkan ke Ring Buffer
         if (bufferIndex < WINDOW_SIZE) {
