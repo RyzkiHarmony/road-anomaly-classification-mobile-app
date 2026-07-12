@@ -22,16 +22,7 @@ class SensorFusionProcessor {
         const val WINDOW_SIZE = 200
         const val STRIDE = 50 // inferensi setiap 0.5 detik
 
-        // Toggle Z-Score normalization mode
-        // TRUE: Instance-level (window-level) scaling untuk mereduksi skew keragaman kendaraan/holder.
-        // FALSE: Global scaling (default) menggunakan MEANS dan STDS hasil training offline.
-        // PENTING: Jika diatur TRUE, model offline juga harus dilatih menggunakan normalisasi per jendela.
-        const val USE_INSTANCE_NORMALIZATION = true
 
-        // Computed scaler parameters dari Python training (cnn_1d_scaler_params.json)
-        // Dummy values for now, will be updated during training if needed.
-        private val MEANS = FloatArray(7) { 0f }
-        private val STDS = FloatArray(7) { 1f }
     }
 
     // Buffers for sliding window channels (size 200)
@@ -300,23 +291,21 @@ class SensorFusionProcessor {
     var lastPipelineStartTime: Long = 0L
 
     private fun runInferencePipeline() {
+        val currentSpeed = speedBuffer[WINDOW_SIZE - 1]
+        
+        // Hentikan eksekusi AI (Inference) sepenuhnya jika kecepatan lambat
+        // Ini mencegah False Positive karena guncangan saat diam/berjalan sangat pelan
+        if (currentSpeed < 1.0f) {
+            // Log.d(TAG, "Speed is too low ($currentSpeed m/s). Skipping inference to save battery.")
+            return
+        }
+
         // Catat waktu mulai preprocessing
         lastPipelineStartTime = System.nanoTime()
 
-        // Siapkan Tensor shape [1, 13, 200]
-        // Handle stationary or manual shaking test override for speed
-        val effectiveSpeedBuffer = FloatArray(WINDOW_SIZE)
-        val currentSpeed = speedBuffer[WINDOW_SIZE - 1]
-        if (currentSpeed < 1.0f) {
-            for (i in 0 until WINDOW_SIZE) {
-                effectiveSpeedBuffer[i] = 8.0f // Cruising speed override
-            }
-        } else {
-            System.arraycopy(speedBuffer, 0, effectiveSpeedBuffer, 0, WINDOW_SIZE)
-        }
-
+        // Siapkan Tensor shape [1, 7, 200]
         val tensorData = FloatArray(7 * WINDOW_SIZE)
-        System.arraycopy(effectiveSpeedBuffer, 0, tensorData, 0, WINDOW_SIZE)
+        System.arraycopy(speedBuffer, 0, tensorData, 0, WINDOW_SIZE)
         System.arraycopy(axBuffer, 0, tensorData, 1 * WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(ayBuffer, 0, tensorData, 2 * WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(azBuffer, 0, tensorData, 3 * WINDOW_SIZE, WINDOW_SIZE)
@@ -324,40 +313,8 @@ class SensorFusionProcessor {
         System.arraycopy(gyBuffer, 0, tensorData, 5 * WINDOW_SIZE, WINDOW_SIZE)
         System.arraycopy(gzBuffer, 0, tensorData, 6 * WINDOW_SIZE, WINDOW_SIZE)
 
-        // Z-Score Standardize per channel before passing to model
-        for (c in 0 until 7) {
-            val offset = c * WINDOW_SIZE
-
-            if (USE_INSTANCE_NORMALIZATION) {
-                // Langkah 2: Instance-Level (Window-Level) Normalization
-                var sum = 0f
-                for (i in 0 until WINDOW_SIZE) {
-                    sum += tensorData[offset + i]
-                }
-                val mean = sum / WINDOW_SIZE
-
-                var sumSqDiff = 0f
-                for (i in 0 until WINDOW_SIZE) {
-                    val diff = tensorData[offset + i] - mean
-                    sumSqDiff += diff * diff
-                }
-                val variance = sumSqDiff / WINDOW_SIZE
-                val std = sqrt(variance)
-
-                val eps = 1e-6f
-                val divisor = if (std < eps) 1.0f else std
-                for (i in 0 until WINDOW_SIZE) {
-                    tensorData[offset + i] = (tensorData[offset + i] - mean) / divisor
-                }
-            } else {
-                // Global Scaling (Default)
-                val mean = MEANS[c]
-                val std = STDS[c]
-                for (i in 0 until WINDOW_SIZE) {
-                    tensorData[offset + i] = (tensorData[offset + i] - mean) / std
-                }
-            }
-        }
+        // Z-Score Standardization is now handled internally by the ONNX Model (MobileInferenceWrapper).
+        // No manual scaling is needed here.
 
         // Log.d(TAG, ">>> TRIGGER INFERENCE (SCALED) | aVertScaled[0..2]=[${tensorData[0]}, ${tensorData[1]}, ${tensorData[2]}] | speedScaled[0]=${tensorData[2 * WINDOW_SIZE]}")
 

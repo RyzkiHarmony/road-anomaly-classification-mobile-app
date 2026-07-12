@@ -64,14 +64,14 @@ class OnnxModelRunner(private val context: Context) {
             
             val result = session.run(inputs)
             try {
-                // Output dari PyTorch adalah logits, kita harus melakukan Softmax
+                // Output dari ONNX model versi terbaru sudah berwujud Probabilitas (Softmax embedded).
+                // Kita tidak perlu lagi melakukan Softmax/Sigmoid manual.
                 val outputTensor = result.iterator().next().value as OnnxTensor
                 val outFloatBuffer = outputTensor.floatBuffer
-                val logits = FloatArray(3)
-                outFloatBuffer.get(logits)
+                val probs = FloatArray(3)
+                outFloatBuffer.get(probs)
                 
-                val probs = sigmoid(logits)
-                // Log.d(TAG, "Prediction: logits=[${logits[0]}, ${logits[1]}, ${logits[2]}] -> probs=[${probs[0]}, ${probs[1]}, ${probs[2]}]")
+                // Log.d(TAG, "Prediction: probs=[${probs[0]}, ${probs[1]}, ${probs[2]}]")
                 return@withContext probs
             } finally {
                 result.close()
@@ -81,13 +81,6 @@ class OnnxModelRunner(private val context: Context) {
         }
     }
 
-    private fun sigmoid(logits: FloatArray): FloatArray {
-        val probs = FloatArray(logits.size)
-        for (i in logits.indices) {
-            probs[i] = (1.0 / (1.0 + exp(-logits[i].toDouble()))).toFloat()
-        }
-        return probs
-    }
 
     fun close() {
         ortSession?.close()
