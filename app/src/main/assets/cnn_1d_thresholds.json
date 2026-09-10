@@ -9,6 +9,6 @@
     "Pothole",
     "Speed Bump"
   ],
-  "calibration_method": "sigmoid",
-  "note": "Probabilities are natively outputted by the ONNX model (embedded sigmoid)."
+  "calibration_method": "softmax",
+  "note": "Probabilities are natively outputted by the ONNX model (embedded softmax)."
 }

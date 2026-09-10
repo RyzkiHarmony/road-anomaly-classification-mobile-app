@@ -81,6 +81,10 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
     val showDeleteDialog = remember { mutableStateOf(false) }
     val selectedAnomaly = remember { mutableStateOf<AnomalyEvent?>(null) }
     val ctx = LocalContext.current
+    val thresholds = remember { com.pemalang.roaddamage.domain.ThresholdConfigReader.getConfig(ctx) }
+    val defaultThreshold = kotlin.math.min(thresholds.potholeThreshold, thresholds.speedBumpThreshold)
+    var selectedThreshold by remember { mutableFloatStateOf(defaultThreshold) }
+    var showFilterMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(tripId) {
         vm.load(tripId)
@@ -135,6 +139,29 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                         Text(text = dateStr, color = OnSurfaceVariant, fontSize = 12.sp)
                     }
                     Row {
+                        Box {
+                            IconButton(onClick = { showFilterMenu = true }) {
+                                Icon(Icons.Default.FilterList, "Filter", tint = OnSurface)
+                            }
+                            DropdownMenu(
+                                expanded = showFilterMenu,
+                                onDismissRequest = { showFilterMenu = false },
+                                containerColor = SurfaceBg
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Model Default (≥ ${(defaultThreshold * 100).toInt()}%)", color = if (selectedThreshold == defaultThreshold) Primary else OnSurface) },
+                                    onClick = { selectedThreshold = defaultThreshold; showFilterMenu = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("≥ 75%", color = if (selectedThreshold == 0.75f) Primary else OnSurface) },
+                                    onClick = { selectedThreshold = 0.75f; showFilterMenu = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("≥ 90%", color = if (selectedThreshold == 0.9f) Primary else OnSurface) },
+                                    onClick = { selectedThreshold = 0.9f; showFilterMenu = false }
+                                )
+                            }
+                        }
                         IconButton(onClick = { vm.shareTrip() }) {
                             Icon(Icons.Default.Share, "Share", tint = OnSurface)
                         }
@@ -149,12 +176,16 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
             val trip = ui.trip
 
             if (trip != null) {
+                val filteredAnomalies = remember(ui.anomalyEvents, selectedThreshold) {
+                    ui.anomalyEvents.filter { it.confidence >= selectedThreshold }
+                }
+
                 // Map Section
                 Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     MapSection(
                             ctx = ctx,
                             points = ui.points,
-                            anomalyEvents = ui.anomalyEvents,
+                            anomalyEvents = filteredAnomalies,
                             onAnomalyClick = { selectedAnomaly.value = it }
                     )
 
@@ -172,45 +203,53 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
                 }
 
                 Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
-                    // G-Force Monitor
+                    // Telemetry & Sensor Health
                     Card(
-                            colors = CardDefaults.cardColors(containerColor = CardBg),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().height(180.dp)
+                        colors = CardDefaults.cardColors(containerColor = CardBg),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                            Icons.Filled.BarChart,
-                                            null,
-                                            tint = Primary,
-                                            modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Info, null, tint = Primary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Telemetry & Sensor Health", color = OnSurface, fontWeight = FontWeight.SemiBold)
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            val isPoorSensor = ui.avgSamplingRate < 90f && ui.avgSamplingRate > 0f
+                            
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column {
+                                    Text("Avg Speed", color = OnSurfaceVariant, fontSize = 12.sp)
+                                    Text("%.1f km/h".format(ui.avgSpeedKmH), color = OnSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Max Speed", color = OnSurfaceVariant, fontSize = 12.sp)
+                                    Text("%.1f km/h".format(ui.maxSpeedKmH), color = OnSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("Sampling Rate", color = OnSurfaceVariant, fontSize = 12.sp)
                                     Text(
-                                            "Vertical G-Force (Y-Axis)",
-                                            color = OnSurface,
-                                            fontWeight = FontWeight.SemiBold
+                                        "%.1f Hz".format(ui.avgSamplingRate), 
+                                        color = if (isPoorSensor) StatusRed else OnSurface, 
+                                        fontSize = 16.sp, 
+                                        fontWeight = FontWeight.Medium
                                     )
                                 }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Accelerometer Y-Axis", color = OnSurfaceVariant, fontSize = 10.sp)
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            // Graph
-                            VerticalGraph(
-                                    values = ui.verticalG,
-                                    modifier = Modifier.fillMaxWidth().weight(1f)
-                            )
+                            
+                            if (isPoorSensor) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Warning: Sensor sampling rate is critically low (<90Hz). ML model predictions may be heavily degraded or invalid.",
+                                    color = StatusRed,
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp
+                                )
+                            }
                         }
                     }
-
 
                     // Upload Section
                     val isUploaded = trip.uploadStatus == UploadStatus.UPLOADED
@@ -461,15 +500,14 @@ private fun MapSection(
             )
 
             anomalyEvents.forEach { event ->
-                val color = if (event.anomalyType == "Pothole") {
-                    AndroidColor.parseColor("#D32F2F") // Vibrant Red for Pothole
+                val hue = if (event.anomalyType == "Pothole") {
+                    BitmapDescriptorFactory.HUE_RED
                 } else {
-                    AndroidColor.parseColor("#EF6C00") // Vibrant Orange for Speed Bump
+                    BitmapDescriptorFactory.HUE_ORANGE
                 }
                 Marker(
                     state = MarkerState(position = LatLng(event.latitude, event.longitude)),
-                    icon = markerBitmapDescriptor(color),
-                    anchor = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                    icon = BitmapDescriptorFactory.defaultMarker(hue),
                     onClick = {
                         onAnomalyClick(event)
                         true
@@ -477,59 +515,6 @@ private fun MapSection(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun VerticalGraph(values: List<Float>, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-
-        // Draw grid lines — light grey-green per DESIGN.md
-        val rows = 4
-        val cols = 6
-        val rowH = h / rows
-        val colW = w / cols
-
-        // Horizontal grid
-        for (i in 0..rows) {
-            val y = i * rowH
-            drawLine(
-                    start = androidx.compose.ui.geometry.Offset(0f, y),
-                    end = androidx.compose.ui.geometry.Offset(w, y),
-                    color = Color(0x22424940), // subtle on-surface-variant
-                    strokeWidth = 1f
-            )
-        }
-
-        // Vertical grid
-        for (i in 0..cols) {
-            val x = i * colW
-            drawLine(
-                    start = androidx.compose.ui.geometry.Offset(x, 0f),
-                    end = androidx.compose.ui.geometry.Offset(x, h),
-                    color = Color(0x22424940),
-                    strokeWidth = 1f
-            )
-        }
-
-        if (values.isEmpty()) return@Canvas
-        
-        // Draw graph
-        val path = Path()
-        val maxVal = 20f 
-        val stepX = w / (values.size - 1).coerceAtLeast(1)
-
-        values.forEachIndexed { i, v ->
-            val x = i * stepX
-            // Normalize value (0..maxVal) to (h..0)
-            val y = h - ((v.coerceIn(0f, maxVal) / maxVal) * h)
-
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-        }
-
-        drawPath(path = path, color = GraphLine, style = Stroke(width = 3f))
     }
 }
 

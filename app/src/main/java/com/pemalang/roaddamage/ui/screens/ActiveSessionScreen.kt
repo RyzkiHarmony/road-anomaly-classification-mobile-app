@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.sp
 import com.pemalang.roaddamage.ui.components.Chart3Lines
 import com.pemalang.roaddamage.ui.components.LegendItem
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.remember
 import com.pemalang.roaddamage.ui.theme.*
 
 // ── Design tokens (Friendly Road Detection) ──
@@ -69,6 +71,9 @@ fun ActiveSessionScreen(
     ax: FloatArray,
     ay: FloatArray,
     az: FloatArray,
+    gx: FloatArray,
+    gy: FloatArray,
+    gz: FloatArray,
     gpsActive: Boolean,
     currentSpeedKmh: Float,
     onStop: () -> Unit,
@@ -142,10 +147,11 @@ fun ActiveSessionScreen(
             val probPothole = anomalyProbabilities.getOrNull(1) ?: 0f
             val probSpeedBump = anomalyProbabilities.getOrNull(2) ?: 0f
 
-            val CONFIDENCE_THRESHOLD = 0.60f
+            val context = LocalContext.current
+            val thresholds = remember { com.pemalang.roaddamage.domain.ThresholdConfigReader.getConfig(context) }
             val maxProb = maxOf(probNone, maxOf(probPothole, probSpeedBump))
-            val isPotholeDetected = (maxProb == probPothole) && (probPothole >= CONFIDENCE_THRESHOLD)
-            val isSpeedBumpDetected = (maxProb == probSpeedBump) && (probSpeedBump >= CONFIDENCE_THRESHOLD)
+            val isPotholeDetected = (maxProb == probPothole) && (probPothole >= thresholds.potholeThreshold)
+            val isSpeedBumpDetected = (maxProb == probSpeedBump) && (probSpeedBump >= thresholds.speedBumpThreshold)
 
             val bgColor = when {
                 isPotholeDetected -> md_theme_StatusRed
@@ -221,6 +227,47 @@ fun ActiveSessionScreen(
                             .weight(1f)
                             .border(1.dp, OutlineVar, RoundedCornerShape(4.dp))
                     ) { Chart3Lines(ax, ay, az, Modifier.fillMaxSize()) }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // ── Gyroscope Graph ──
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBg),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("GYROSCOPE", color = OnSurfaceVariant, fontSize = 10.sp)
+                            Text(
+                                "%.2f rad/s".format(gx.lastOrNull() ?: 0f),
+                                color = OnSurface,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Row {
+                            LegendItem(GraphLineX, "X")
+                            Spacer(Modifier.width(8.dp))
+                            LegendItem(GraphLineY, "Y")
+                            Spacer(Modifier.width(8.dp))
+                            LegendItem(GraphLineZ, "Z")
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                            .weight(1f)
+                            .border(1.dp, OutlineVar, RoundedCornerShape(4.dp))
+                    ) { Chart3Lines(gx, gy, gz, Modifier.fillMaxSize()) }
                 }
             }
 

@@ -42,11 +42,14 @@ constructor(
     private val cacheManager: TripDataCacheManager
 ) : ViewModel() {
     data class UiState(
-            val trip: Trip? = null,
-            val points: List<Pair<Double, Double>> = emptyList(),
-            val magnitudes: List<Float> = emptyList(),
-            val verticalG: List<Float> = emptyList(),
-            val anomalyEvents: List<com.pemalang.roaddamage.model.AnomalyEvent> = emptyList()
+        val trip: Trip? = null,
+        val points: List<Pair<Double, Double>> = emptyList(),
+        val magnitudes: List<Float> = emptyList(),
+        val verticalG: List<Float> = emptyList(),
+        val anomalyEvents: List<com.pemalang.roaddamage.model.AnomalyEvent> = emptyList(),
+        val avgSpeedKmH: Float = 0f,
+        val maxSpeedKmH: Float = 0f,
+        val avgSamplingRate: Float = 0f
     )
     sealed class Event {
         object Deleted : Event()
@@ -80,7 +83,10 @@ constructor(
                 points = cached.points, 
                 magnitudes = cached.magnitudes, 
                 verticalG = cached.verticalG, 
-                anomalyEvents = anomalyEventsList
+                anomalyEvents = anomalyEventsList,
+                avgSpeedKmH = cached.avgSpeedKmH,
+                maxSpeedKmH = cached.maxSpeedKmH,
+                avgSamplingRate = cached.avgSamplingRate
             )
             return
         }
@@ -91,6 +97,10 @@ constructor(
             val pts = mutableListOf<Pair<Double, Double>>()
             val mags = mutableListOf<Float>()
             val vertG = mutableListOf<Float>()
+            var sumSpeed = 0f
+            var maxSpeed = 0f
+            var speedCount = 0
+            var totalRows = 0
 
             try {
                 val file = File(trip.dataFilePath)
@@ -113,6 +123,7 @@ constructor(
                         val magIdx = headers.indexOf("magnitude")
                         val latIdx = headers.indexOf("lat")
                         val lonIdx = headers.indexOf("lon")
+                        val speedIdx = headers.indexOf("speed")
 
                         var index = 0
                         line = br.readLine()
@@ -140,6 +151,17 @@ constructor(
                                     }
                                 }
                             }
+                            
+                            val allParts = line.split(",")
+                            if (speedIdx != -1 && allParts.size > speedIdx) {
+                                val speedMS = allParts[speedIdx].toFloatOrNull() ?: 0f
+                                val speedKMH = speedMS * 3.6f
+                                sumSpeed += speedKMH
+                                if (speedKMH > maxSpeed) maxSpeed = speedKMH
+                                speedCount++
+                            }
+                            totalRows++
+                            
                             index++
                             line = br.readLine()
                         }
@@ -156,8 +178,18 @@ constructor(
         val magsList = mags.toList()
         val vertGList = vertG.toList()
 
-        cacheManager.put(tripId, CachedTripData(ptsList, magsList, vertGList))
-        _ui.value = _ui.value.copy(points = ptsList, magnitudes = magsList, verticalG = vertGList)
+        val avgSpeed = if (speedCount > 0) sumSpeed / speedCount else 0f
+        val sampleRate = if (trip.duration > 0) totalRows.toFloat() / trip.duration else 0f
+
+        cacheManager.put(tripId, CachedTripData(ptsList, magsList, vertGList, avgSpeed, maxSpeed, sampleRate))
+        _ui.value = _ui.value.copy(
+            points = ptsList, 
+            magnitudes = magsList, 
+            verticalG = vertGList,
+            avgSpeedKmH = avgSpeed,
+            maxSpeedKmH = maxSpeed,
+            avgSamplingRate = sampleRate
+        )
         }
     }
 

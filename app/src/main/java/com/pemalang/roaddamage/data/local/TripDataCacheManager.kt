@@ -7,7 +7,10 @@ import javax.inject.Singleton
 data class CachedTripData(
     val points: List<Pair<Double, Double>>,
     val magnitudes: List<Float>,
-    val verticalG: List<Float>
+    val verticalG: List<Float>,
+    val avgSpeedKmH: Float = 0f,
+    val maxSpeedKmH: Float = 0f,
+    val avgSamplingRate: Float = 0f
 )
 
 @Singleton

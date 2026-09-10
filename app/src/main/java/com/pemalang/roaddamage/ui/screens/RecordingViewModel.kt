@@ -29,11 +29,17 @@ constructor(
     private val _ax = MutableStateFlow(FloatArray(0))
     private val _ay = MutableStateFlow(FloatArray(0))
     private val _az = MutableStateFlow(FloatArray(0))
+    private val _gx = MutableStateFlow(FloatArray(0))
+    private val _gy = MutableStateFlow(FloatArray(0))
+    private val _gz = MutableStateFlow(FloatArray(0))
     private val _points = MutableStateFlow<List<Pair<Double, Double>>>(emptyList())
     val magnitudes: StateFlow<FloatArray> = _magnitudes
     val ax: StateFlow<FloatArray> = _ax
     val ay: StateFlow<FloatArray> = _ay
     val az: StateFlow<FloatArray> = _az
+    val gx: StateFlow<FloatArray> = _gx
+    val gy: StateFlow<FloatArray> = _gy
+    val gz: StateFlow<FloatArray> = _gz
     val points: StateFlow<List<Pair<Double, Double>>> = _points
     val distance: StateFlow<Float> = repo.distanceFlow
     val recording: StateFlow<Boolean> = repo.recordingFlow
@@ -104,6 +110,9 @@ constructor(
                         val newAx = FloatArray(size)
                         val newAy = FloatArray(size)
                         val newAz = FloatArray(size)
+                        val newGx = FloatArray(size)
+                        val newGy = FloatArray(size)
+                        val newGz = FloatArray(size)
                         
                         for (i in 0 until size) {
                             val reading = buffer[i]
@@ -111,12 +120,18 @@ constructor(
                             newAx[i] = reading.accelX
                             newAy[i] = reading.accelY
                             newAz[i] = reading.accelZ
+                            newGx[i] = if (reading.gyroX.isNaN()) 0f else reading.gyroX
+                            newGy[i] = if (reading.gyroY.isNaN()) 0f else reading.gyroY
+                            newGz[i] = if (reading.gyroZ.isNaN()) 0f else reading.gyroZ
                         }
 
                         _magnitudes.value = appendWithLimit(_magnitudes.value, newMags, 200)
                         _ax.value = appendWithLimit(_ax.value, newAx, 200)
                         _ay.value = appendWithLimit(_ay.value, newAy, 200)
                         _az.value = appendWithLimit(_az.value, newAz, 200)
+                        _gx.value = appendWithLimit(_gx.value, newGx, 200)
+                        _gy.value = appendWithLimit(_gy.value, newGy, 200)
+                        _gz.value = appendWithLimit(_gz.value, newGz, 200)
 
                         buffer.clear()
                     }

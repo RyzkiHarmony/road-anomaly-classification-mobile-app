@@ -73,6 +73,9 @@ fun HomeScreen(
     val ax by vm.ax.collectAsState()
     val ay by vm.ay.collectAsState()
     val az by vm.az.collectAsState()
+    val gx by vm.gx.collectAsState()
+    val gy by vm.gy.collectAsState()
+    val gz by vm.gz.collectAsState()
     val gpsActive by vm.gpsActive.collectAsState()
     val isGpsEnabled by vm.isGpsEnabled.collectAsState()
     val totalTrips by vm.totalTrips.collectAsState()
@@ -196,6 +199,9 @@ fun HomeScreen(
             ax = ax,
             ay = ay,
             az = az,
+            gx = gx,
+            gy = gy,
+            gz = gz,
             gpsActive = gpsActive,
             currentSpeedKmh = currentSpeedKmh,
             onStop = { startService(ctx, RecordingService.ACTION_STOP) },

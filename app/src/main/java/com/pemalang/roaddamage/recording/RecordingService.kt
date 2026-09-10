@@ -298,12 +298,12 @@ class RecordingService : Service() {
                         val potholeProb = probs[1]
                         val speedBumpProb = probs[2]
                         
-                        // Argmax with Confidence Threshold
-                        // Mencegah False Positives (Spam Alert) di permukaan jalan kerikil
-                        val CONFIDENCE_THRESHOLD = 0.50f
+                        // Ambil Threshold dinamis dari model ML
+                        val thresholds = com.pemalang.roaddamage.domain.ThresholdConfigReader.getConfig(this@RecordingService)
+                        
                         val maxProb = maxOf(noneProb, maxOf(potholeProb, speedBumpProb))
-                        val isPotholeDetected = (maxProb == potholeProb) && (potholeProb >= CONFIDENCE_THRESHOLD)
-                        val isSpeedBumpDetected = (maxProb == speedBumpProb) && (speedBumpProb >= CONFIDENCE_THRESHOLD)
+                        val isPotholeDetected = (maxProb == potholeProb) && (potholeProb >= thresholds.potholeThreshold)
+                        val isSpeedBumpDetected = (maxProb == speedBumpProb) && (speedBumpProb >= thresholds.speedBumpThreshold)
                         
                         if (isPotholeDetected || isSpeedBumpDetected) {
                             val now = System.currentTimeMillis()
