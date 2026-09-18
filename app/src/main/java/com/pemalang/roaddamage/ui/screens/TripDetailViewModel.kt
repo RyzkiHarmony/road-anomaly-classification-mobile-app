@@ -39,8 +39,14 @@ class TripDetailViewModel
 constructor(
     private val app: Application, 
     private val tripDao: TripDao,
-    private val cacheManager: TripDataCacheManager
+    private val cacheManager: TripDataCacheManager,
+    private val ragRepository: com.pemalang.roaddamage.data.repository.RagRepository
 ) : ViewModel() {
+    data class RagAnomalyState(
+        val isLoading: Boolean = false,
+        val context: com.pemalang.roaddamage.data.remote.AnomalyContextResponse? = null
+    )
+
     data class UiState(
         val trip: Trip? = null,
         val points: List<Pair<Double, Double>> = emptyList(),
@@ -59,6 +65,25 @@ constructor(
     }
     private val _ui = MutableStateFlow(UiState())
     val ui: StateFlow<UiState> = _ui
+
+    private val _ragStates = MutableStateFlow<Map<String, RagAnomalyState>>(emptyMap())
+    val ragStates: StateFlow<Map<String, RagAnomalyState>> = _ragStates
+
+    fun loadAnomalyContext(anomaly: com.pemalang.roaddamage.model.AnomalyEvent) {
+        val current = _ragStates.value[anomaly.eventId]
+        if (current != null && current.context != null) return
+
+        _ragStates.value = _ragStates.value + (anomaly.eventId to RagAnomalyState(isLoading = true))
+        viewModelScope.launch {
+            try {
+                val response = ragRepository.getAnomalyContext(anomaly)
+                _ragStates.value = _ragStates.value + (anomaly.eventId to RagAnomalyState(isLoading = false, context = response))
+            } catch (e: Exception) {
+                _ragStates.value = _ragStates.value + (anomaly.eventId to RagAnomalyState(isLoading = false, context = null))
+            }
+        }
+    }
+
     val events =
             MutableSharedFlow<Event>(
                     replay = 0,
@@ -195,11 +220,15 @@ constructor(
 
     fun enqueueUpload() {
         val trip = _ui.value.trip ?: return
-        if (trip.uploadStatus == UploadStatus.UPLOADED ||
-                        trip.uploadStatus == UploadStatus.UPLOADING
-        )
-                return
-        viewModelScope.launch { tripDao.upsert(trip.copy(uploadStatus = UploadStatus.UPLOADING)) }
+        if (trip.uploadStatus == UploadStatus.UPLOADED) return
+
+        val newTrip = trip.copy(uploadStatus = UploadStatus.UPLOADING)
+        _ui.value = _ui.value.copy(trip = newTrip)
+        viewModelScope.launch {
+            tripDao.upsert(newTrip)
+            events.tryEmit(Event.Saved("Mengirim data trip ke server..."))
+        }
+
         val input = Data.Builder().putString("tripId", trip.tripId).build()
         val constraints =
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
@@ -207,13 +236,12 @@ constructor(
                 OneTimeWorkRequestBuilder<com.pemalang.roaddamage.work.TripUploadWorker>()
                         .setInputData(input)
                         .setConstraints(constraints)
-                        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
                         .addTag("upload_trip_${trip.tripId}")
                         .build()
         WorkManager.getInstance(app)
                 .enqueueUniqueWork(
                         "upload_trip_${trip.tripId}",
-                        androidx.work.ExistingWorkPolicy.KEEP,
+                        androidx.work.ExistingWorkPolicy.REPLACE,
                         request
                 )
     }

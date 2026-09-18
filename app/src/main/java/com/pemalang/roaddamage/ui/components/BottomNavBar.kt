@@ -3,6 +3,7 @@ package com.pemalang.roaddamage.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -23,10 +24,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Enum representing the three primary navigation destinations.
+ * Enum representing the primary navigation destinations.
  */
 enum class NavDestination(val label: String, val icon: ImageVector) {
     Home("Home", Icons.Default.Home),
+    Hotspot("Peta", Icons.Default.Map),
     History("History", Icons.Default.History),
     Settings("Settings", Icons.Default.Settings)
 }

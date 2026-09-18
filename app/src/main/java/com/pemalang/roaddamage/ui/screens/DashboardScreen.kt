@@ -20,7 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Motorcycle
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
@@ -60,6 +62,7 @@ private val StatusGreen = md_theme_StatusGreen
 fun DashboardScreen(
     onStartRecording: () -> Unit,
     onOpenTrips: () -> Unit,
+    onOpenHotspot: () -> Unit = {},
     onOpenSettings: () -> Unit,
     totalTrips: Int,
     totalDist: Float,
@@ -78,6 +81,7 @@ fun DashboardScreen(
                 selected = NavDestination.Home,
                 onNavigate = { dest ->
                     when (dest) {
+                        NavDestination.Hotspot -> onOpenHotspot()
                         NavDestination.History -> onOpenTrips()
                         NavDestination.Settings -> onOpenSettings()
                         else -> { /* already on Home */ }
@@ -390,6 +394,34 @@ fun DashboardScreen(
                     }
                 }
                 
+                Spacer(Modifier.height(16.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = CardBg),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(90.dp)
+                        .clickable { onOpenHotspot() }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(PrimaryLight.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Map, contentDescription = null, tint = Primary, modifier = Modifier.size(28.dp))
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Peta Hotspot Kerusakan", color = OnSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Lihat seluruh titik rawan di server PostgreSQL", color = OnSurfaceVariant, fontSize = 12.sp)
+                        }
+                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = OnSurfaceVariant)
+                    }
+                }
+
                 Spacer(Modifier.height(32.dp))
             }
         }

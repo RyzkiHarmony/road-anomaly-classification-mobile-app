@@ -59,6 +59,7 @@ enum class SortOption {
 fun TripListScreen(
         onOpenTrip: (Trip) -> Unit,
         onNavigateHome: () -> Unit,
+        onNavigateHotspot: () -> Unit = {},
         onNavigateSettings: () -> Unit,
         vm: TripListViewModel = hiltViewModel()
 ) {
@@ -145,6 +146,7 @@ fun TripListScreen(
                     onNavigate = { dest ->
                         when(dest) {
                             NavDestination.Home -> onNavigateHome()
+                            NavDestination.Hotspot -> onNavigateHotspot()
                             NavDestination.Settings -> onNavigateSettings()
                             else -> { /* already on History */ }
                         }

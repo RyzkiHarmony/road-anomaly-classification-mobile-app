@@ -78,6 +78,7 @@ class TripUploadWorker(appContext: Context, params: WorkerParameters) :
                 }
             }
         } catch (t: Throwable) {
+            android.util.Log.e("TripUploadWorker", "Upload failed with error: ${t.message}", t)
             // Network error, retry
             notify("Unggah Perjalanan", "Gagal: Masalah jaringan, akan dicoba lagi")
             Result.retry()

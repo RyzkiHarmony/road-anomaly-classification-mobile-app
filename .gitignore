@@ -56,3 +56,23 @@ skills-lock.json
 # Firebase / Google Services
 google-services.json
 app/google-services.json
+
+# Crash dumps & Log files
+*.stackdump
+*.log
+hs_err_pid*.log
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets & Environment Variables
+.env
+*.env
+backend/

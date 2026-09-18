@@ -46,6 +46,7 @@ private val StatusGreen = md_theme_Primary
 fun SettingsScreen(
     onBack: () -> Unit,
     onNavigateHome: () -> Unit,
+    onNavigateHotspot: () -> Unit = {},
     onNavigateTrips: () -> Unit,
     vm: SettingsViewModel = hiltViewModel()
 ) {
@@ -104,6 +105,7 @@ fun SettingsScreen(
                                 onNavigate = { dest ->
                                         when (dest) {
                                                 NavDestination.Home -> onNavigateHome()
+                                                NavDestination.Hotspot -> onNavigateHotspot()
                                                 NavDestination.History -> onNavigateTrips()
                                                 else -> { /* already on Settings */ }
                                         }

@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pemalang.roaddamage.ui.screens.HomeScreen
+import com.pemalang.roaddamage.ui.screens.HotspotMapScreen
 import com.pemalang.roaddamage.ui.screens.OnboardingScreen
 import com.pemalang.roaddamage.ui.screens.SettingsScreen
 import com.pemalang.roaddamage.ui.screens.SplashScreen
@@ -25,6 +26,7 @@ object Routes {
     const val Splash = "splash"
     const val Onboarding = "onboarding"
     const val Home = "home"
+    const val Hotspot = "hotspot"
     const val Trips = "trips"
     const val Detail = "detail/{tripId}"
     const val Settings = "settings"
@@ -68,8 +70,20 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 HomeScreen(
                         onStartRecording = {},
                         onOpenTrips = { navController.navigate(Routes.Trips) },
+                        onOpenHotspot = { navController.navigate(Routes.Hotspot) },
                         onOpenSettings = { navController.navigate(Routes.Settings) },
                         vm = recordingViewModel
+                )
+            }
+            composable(Routes.Hotspot) {
+                HotspotMapScreen(
+                        onNavigateHome = {
+                            navController.navigate(Routes.Home) {
+                                popUpTo(Routes.Home) { inclusive = true }
+                            }
+                        },
+                        onNavigateHistory = { navController.navigate(Routes.Trips) },
+                        onNavigateSettings = { navController.navigate(Routes.Settings) }
                 )
             }
             composable(Routes.Trips) {
@@ -80,6 +94,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                                 popUpTo(Routes.Home) { inclusive = true }
                             }
                         },
+                        onNavigateHotspot = { navController.navigate(Routes.Hotspot) },
                         onNavigateSettings = { navController.navigate(Routes.Settings) },
                         vm = tripListViewModel
                 )
@@ -92,6 +107,7 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                                 popUpTo(Routes.Home) { inclusive = true }
                             }
                         },
+                        onNavigateHotspot = { navController.navigate(Routes.Hotspot) },
                         onNavigateTrips = { navController.navigate(Routes.Trips) },
                         vm = settingsViewModel
                 )

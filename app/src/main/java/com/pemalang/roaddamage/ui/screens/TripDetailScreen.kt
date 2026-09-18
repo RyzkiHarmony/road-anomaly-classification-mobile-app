@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -377,9 +379,16 @@ fun TripDetailScreen(tripId: String, onBack: () -> Unit = {}) {
             )
         }
 
+        val ragStates by vm.ragStates.collectAsState()
+
         if (selectedAnomaly.value != null) {
+            val curAnomaly = selectedAnomaly.value!!
+            LaunchedEffect(curAnomaly.eventId) {
+                vm.loadAnomalyContext(curAnomaly)
+            }
             AnomalyDetailDialog(
-                anomaly = selectedAnomaly.value!!,
+                anomaly = curAnomaly,
+                ragState = ragStates[curAnomaly.eventId],
                 onDismiss = { selectedAnomaly.value = null },
                 onOpenInMaps = { lat, lng ->
                     try {
@@ -521,9 +530,20 @@ private fun MapSection(
 @Composable
 private fun AnomalyDetailDialog(
     anomaly: AnomalyEvent,
+    ragState: TripDetailViewModel.RagAnomalyState? = null,
     onDismiss: () -> Unit,
     onOpenInMaps: (Double, Double) -> Unit
 ) {
+    val ctx = LocalContext.current
+    var streetAddress by remember(anomaly.eventId) { mutableStateOf<String?>("Mendeteksi nama jalan...") }
+    LaunchedEffect(anomaly.eventId) {
+        streetAddress = com.pemalang.roaddamage.util.GeocoderHelper.getStreetName(
+            context = ctx,
+            latitude = anomaly.latitude,
+            longitude = anomaly.longitude
+        )
+    }
+
     val isPothole = anomaly.anomalyType.equals("Pothole", ignoreCase = true)
     val titleText = if (isPothole) "Lubang Jalan (Pothole)" else "Polisi Tidur (Speed Bump)"
     val statusColor = if (isPothole) StatusRed else StatusOrange
@@ -535,8 +555,8 @@ private fun AnomalyDetailDialog(
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .padding(16.dp),
+                .fillMaxWidth(0.92f)
+                .padding(vertical = 16.dp),
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = CardBg),
             elevation = CardDefaults.cardElevation(8.dp)
@@ -544,7 +564,8 @@ private fun AnomalyDetailDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header Icon
@@ -634,37 +655,55 @@ private fun AnomalyDetailDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // 2. Coordinate Info
+                // 2. Location & Street Name Info
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(SurfaceContainer.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .padding(12.dp)
+                        .background(SurfaceContainer.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+                        .padding(14.dp)
                 ) {
-                    Text(
-                        text = "Lokasi Koordinat",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = OnSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text(
-                                text = "Lat: ${anomaly.latitude}",
-                                fontSize = 12.sp,
-                                color = OnSurface
-                            )
-                            Text(
-                                text = "Lng: ${anomaly.longitude}",
-                                fontSize = 12.sp,
-                                color = OnSurface
-                            )
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Primary.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = Primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = streetAddress ?: "Mendeteksi nama jalan...",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = OnSurface,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "GPS: %.5f, %.5f".format(anomaly.latitude, anomaly.longitude),
+                                    fontSize = 11.sp,
+                                    color = OnSurfaceVariant
+                                )
+                            }
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         IconButton(
                             onClick = {
                                 onOpenInMaps(anomaly.latitude, anomaly.longitude)
@@ -683,7 +722,43 @@ private fun AnomalyDetailDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // RAG-Powered AI Context Card
+                val dialogCtx = androidx.compose.ui.platform.LocalContext.current
+                com.pemalang.roaddamage.ui.components.RagContextCard(
+                    isLoading = ragState?.isLoading ?: false,
+                    context = ragState?.context,
+                    modifier = Modifier.fillMaxWidth(),
+                    onActionClick = { action ->
+                        if (action == "report_authority" || action == "report") {
+                            val mapUrl = "https://maps.google.com/?q=${anomaly.latitude},${anomaly.longitude}"
+                            val summaryText = ragState?.context?.summary ?: "Terdeteksi anomali pada permukaan jalan."
+                            val shareText = """
+                                [Laporan Kondisi Jalan]
+                                Kategori: $titleText
+                                Keyakinan Model: ${"%.1f".format(anomaly.confidence * 100)}%
+                                Lokasi GPS: ${anomaly.latitude}, ${anomaly.longitude}
+                                Tautan Peta: $mapUrl
+                                Wawasan AI: $summaryText
+                            """.trimIndent()
+                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Laporan $titleText")
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            dialogCtx.startActivity(Intent.createChooser(sendIntent, "Kirim Laporan Kerusakan Jalan"))
+                        } else {
+                            android.widget.Toast.makeText(
+                                dialogCtx,
+                                "Titik anomali ditandai untuk pemantauan berkala.",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Action Buttons
                 Button(

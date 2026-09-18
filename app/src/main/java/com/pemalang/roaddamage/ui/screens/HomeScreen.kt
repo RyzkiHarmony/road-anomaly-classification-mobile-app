@@ -61,6 +61,7 @@ private val TextSecondary = md_theme_OnSurfaceVariant
 fun HomeScreen(
     onStartRecording: () -> Unit,
     onOpenTrips: () -> Unit,
+    onOpenHotspot: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     vm: RecordingViewModel = hiltViewModel()
 ) {
@@ -181,6 +182,7 @@ fun HomeScreen(
                 }
             },
             onOpenTrips = onOpenTrips,
+            onOpenHotspot = onOpenHotspot,
             onOpenSettings = onOpenSettings,
             totalTrips = totalTrips,
             totalDist = totalDistance ?: 0f,
